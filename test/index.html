@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Jaerin Kim</title>
+    <meta name="author" content="Jaerin Kim" />
+    <!-- Tabs CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <!--Only for demo purpose - no need to add.-->
+    <link rel="stylesheet" href="css/demo.css" />
+    <script
+        src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+        integrity="sha256-4+XzXVhsDmqanXGHaHvgh1gMQKX40OUvDEBTu8JcmNs="
+        crossorigin="anonymous">
+     $(document).ready(function(){
+         $(window).scroll(function(){
+  	         var scroll = $(window).scrollTop();
+	           if (scroll > 300) {
+	               $(".navbar").css("background" , "blue");
+	           }
+             
+	           else{
+		             $(".navbar").css("background" , "#333");  	
+	           }
+         })
+     })
+    </script>
+
+    <!-- Collapsible -->
+    <style>
+        .collapsible {
+        background-color: #777;
+        color: white;
+        cursor: pointer;
+        padding: 18px;
+        width: 100%;
+        border: none;
+        text-align: left;
+        outline: none;
+        font-size: 15px;
+        }
+
+        .active, .collapsible:hover {
+        background-color: #555;
+        }
+
+        .content {
+        padding: 0 18px;
+        display: none;
+        overflow: hidden;
+        background-color: #f1f1f1;
+        }
+    </style>
+
+
+</head>
+<body>
+
+    <!--  buttons
+<div class="ScriptTop">
+    <div class="rt-container">
+        <div class="col-rt-4" id="float-right">
+            
+        </div>
+        <div class="col-rt-2">
+            <ul>
+                <li><a href="https://codeconvey.com/pure-css-responsive-vertical-tabs">Back to Tutorial</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+-->
+
+
+<header class="ScriptHeader">
+    <div class="rt-container">
+    	<div class="col-rt-12">
+        	<div class="rt-heading">
+            	<h1 style="font-size: 250%">Jaerin Kim</h1>
+                 <p>Politics, Data Science, and Machine Learning<p> 
+            </div>
+        </div>
+    </div>
+</header>
+
+<!--
+<nav class="navbar">
+    <ul>
+        <li><a href="#">HTML</a></li>
+        <li><a href="#">CSS</a></li>
+        <li><a href="#">JavaScript</a></li>
+        <li><a href="#">PHP</a></li>
+        <li><a href="#">MySQL</a></li>
+    </ul>
+</nav>
+-->
+
+<section>
+    <div class="rt-container">
+          <div class="col-rt-12">
+              <div class="Scriptcontent">
+
+                  <section class="tabs-container">
+                      <label for="tab1"> Spotify Learns Politics </label>
+                      <label for="tab2"> Other Projects </label>
+                      <label for="tab3"> Contact </label>
+                  </section>
+
+                  <input name="tab" id="tab1" type="radio" checked />
+                  <section class="tab-content">
+                      <h2> Projects </h2>
+                      <button type="button" class="collapsible">Spotify Learns Politics</button>
+                      <div class="content">
+        <p> Does culture affect political behavior? Many people would say yes. The problem is that it is difficult to define what the culture is and study how it works. The difficulties in measurement can lead to arbitrary, biased, and inefficient estimates, when left to be solved with human hands.
+
+            <p> But what if there is a machine learning algorithm devoted to learning and classifying the human culture? One such algorithm kept improving for years with millions of new data points every day. Spotify has it.</p>
+            <img src="img/network.jpg">
+
+            <br>
+
+<button type="button" class="collapsible">Reverse-Engineering Spotify Recommendation Algorithm</button>
+<div class="content">
+    <p>Music preference incorporates multidimensional, latent cultural traits. Spotify recommendations does, as well. But how do we get the access to that secret recipe?</p>
+
+        <p> Spotify recommendations are a function of the data Spotify has and the algorithm Spotify uses to analyze them. Because Spotify recommendations are publicly available, they can be used to infer how Spotify analyzed its private data.</p>
+        <p>
+            The starting point is to mine the Spotify recommendations. These recommendations form a network of music tracks.
+        </p>
+        <p> But how do we use this network? If culture affects political decisions, the musical style of a Trump supporter's favorite musician might differ from a Clinton supporter's. Then it will take many "chains" of recommendations (edges) to reach one from the other. In the case of the example below, this is the distance between Keith Urban and Jennifer Lopez. </p>
+
+        <img src="img/ttok.gif">
+
+        <br>
+
+        <button type="button" class="collapsible">Details</button>
+<div class="content">
+    <p> Spotify API ("Spotipy") returns 100 recommended tracks when provided with a track, an album, or an artist. The first input was Billboard "Greatest of all Time" chart which covers divers selection of albums. Artists covered include Taylor Swift, Eminem, Michael Jackson, and the Beatles. From there, the recommended tracks become exponentially large. Theoretically, it could reach 2 million tracks with just two iterations of recommendations! But the actual number goes down because there are duplicate recommendations.</p>
+
+    <p>My current collection covers 900,000 tracks and artists (vertices) and 15,000,000 connections between them (edges). These vertices are connected with Facebook users who like a politician, who also happens like a musician.</p>
+    <br>
+</div>
+</div>
+
+<br>
+
+<button type="button" class="collapsible">What Are the Findings?</button>
+<div class="content">
+
+
+		<p> The Proportion of Shared Tracks between Different Partisans. The numbers are the proportion of row-partisan songs being in the column-partisan's network. For example, 31.2% of Trump supporters' tracks are also in Cruz supporters' track network. Each network is the smallest possible network for including each group of the partisan Facebook users in the database. Notice that Sanders supporters hardly likes Trump supporters' music, even after accounting for the difference in network magnitude. </p>
+
+    <p></p><table border = ".1">
+    <tr>
+		    <td></td><td>Trump</td><td>Sanders</td> <td>Clinton</td> <td>Cruz}</td>
+
+</tr>
+<td>Trump</td>   <td>1</td><td>0.102</td><td>0.175</td><td>0.312</td>
+        </tr>
+        <tr>
+            <td>Sanders</td><td>0.04</td><td>1</td><td>0.181</td><td>0.217</td>
+        </tr>
+        <tr>
+    <td>Clinton</td><td>0.063</td><td>0.164</td><td>1</td><td>0.251</td>
+        </tr>
+        <tr>
+    <td>Cruz</td><td>0.082</td><td>0.144</td><td>0.185</td><td>1</td>
+    </tr>
+    </table>
+</div>
+    </div>
+
+</section>
+
+<input name="tab" id="tab2" type="radio" />
+<section class="tab-content">
+
+    <button type="button" class="collapsible">Natinonalist Success among Liberal Voters</button>
+    <div class="content">
+        <p> Summury: political parties should give up vote-maximization to combat nationalist parties/politicians.</p>
+
+        <h4>Liberal Voters, Successful Nationalists</h4>
+        <p> It is well-known that conservative voters are more likely to support nationalist parties or politicians. But nationalist parties are more successful in more liberal countries (and country-years). Why?</p>
+            <img src="img/libnat.jpg">
+
+        <p> My game-theoretic model shows that this is a natural outcome, as long as parties seek to maximize their votes. As voters become liberal,</p>
+        <h4 style="text-align:center">Leftist parties: incentivized to pursue liberal policies (cultural leftism) <-> redistribution (economic leftism);</h4>
+        <h4 style="text-align:center">Righist parties: incentivized to pursue free-market policies (economic rightism) <-> conservatism (cultural rightism).</h4>
+
+
+        <img src="img/optimalemphasis.jpg">
+        <p> The model predicts that this alienates culturally conservative voters who support redistribution. These voters overlap with the working class. These alienated voters become easily attracted to nationalist parties and politicians.</p>
+
+        <p> The result suggests that (1) it is natural for a nationalist party/politician to appear as voters become liberal; (2) A party can combat nationalist parties/politicians by appealing to the working class voters, but it will decrease the party's vote share.</p>
+
+
+        <button type="button" class="collapsible">Details</button>
+        <div class="content">
+            <p>Working paper available on request. <a href="img/WCN.pdf"> Presentation material (PDF) </a>
+            </p>
+        </div>
+    </div>
+    <button type="button" class="collapsible">No Need for Surveys: Inferring Party Policy Positions from Election Results</button>
+    <div class="content">
+        <p>Summary: The table below can be mapped to party policy positions in Britain (i.e. how leftist/rightist a party is).</p>
+        <div style="margin: 0 auto; display: table; margin-top: 1em;">
+            <table class='gmisc_table' style='border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;' >
+                <thead>
+                    <tr>
+                        <th style='border-bottom: 1px solid grey; border-top: 2px solid grey;'> </th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>Green</th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>BNP</th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>Respect</th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>Britain First</th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>Conservative</th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>CISTA</th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>Labour</th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>One Love</th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>Liberal Democrat</th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>Women's Equality</th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>UKIP</th>
+                        <th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>Independent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style='text-align: left;'>Green</td>
+                        <td style='text-align: center;'>11649</td>
+                        <td style='text-align: center;'>898</td>
+                        <td style='text-align: center;'>3917</td>
+                        <td style='text-align: center;'>1593</td>
+                        <td style='text-align: center;'>14496</td>
+                        <td style='text-align: center;'>5904</td>
+                        <td style='text-align: center;'>71027</td>
+                        <td style='text-align: center;'>2312</td>
+                        <td style='text-align: center;'>18697</td>
+                        <td style='text-align: center;'>16601</td>
+                        <td style='text-align: center;'>2471</td>
+                        <td style='text-align: center;'>1108</td>
+                    </tr>
+                    <tr>
+                        <td style='text-align: left;'>BNP</td>
+                        <td style='text-align: center;'>584</td>
+                        <td style='text-align: center;'>2968</td>
+                        <td style='text-align: center;'>382</td>
+                        <td style='text-align: center;'>2469</td>
+                        <td style='text-align: center;'>1355</td>
+                        <td style='text-align: center;'>408</td>
+                        <td style='text-align: center;'>947</td>
+                        <td style='text-align: center;'>178</td>
+                        <td style='text-align: center;'>384</td>
+                        <td style='text-align: center;'>392</td>
+                        <td style='text-align: center;'>3182</td>
+                        <td style='text-align: center;'>76</td>
+                    </tr>
+                    <tr>
+                        <td style='text-align: left;'>Respect</td>
+                        <td style='text-align: center;'>4386</td>
+                        <td style='text-align: center;'>310</td>
+                        <td style='text-align: center;'>5930</td>
+                        <td style='text-align: center;'>727</td>
+                        <td style='text-align: center;'>3066</td>
+                        <td style='text-align: center;'>1337</td>
+                        <td style='text-align: center;'>15646</td>
+                        <td style='text-align: center;'>509</td>
+                        <td style='text-align: center;'>1816</td>
+                        <td style='text-align: center;'>1424</td>
+                        <td style='text-align: center;'>1541</td>
+                        <td style='text-align: center;'>315</td>
+                    </tr>
+                    <tr>
+                        <td style='text-align: left;'>Britain First</td>
+                        <td style='text-align: center;'>1604</td>
+                        <td style='text-align: center;'>3636</td>
+                        <td style='text-align: center;'>716</td>
+                        <td style='text-align: center;'>4928</td>
+                        <td style='text-align: center;'>5324</td>
+                        <td style='text-align: center;'>785</td>
+                        <td style='text-align: center;'>2741</td>
+                        <td style='text-align: center;'>342</td>
+                        <td style='text-align: center;'>1416</td>
+                        <td style='text-align: center;'>1440</td>
+                        <td style='text-align: center;'>8128</td>
+                        <td style='text-align: center;'>312</td>
+                    </tr>
+                    <tr>
+                        <td style='text-align: left;'>Conservative</td>
+                        <td style='text-align: center;'>111971</td>
+                        <td style='text-align: center;'>12406</td>
+                        <td style='text-align: center;'>13029</td>
+                        <td style='text-align: center;'>34513</td>
+                        <td style='text-align: center;'>219107</td>
+                        <td style='text-align: center;'>19779</td>
+                        <td style='text-align: center;'>90975</td>
+                        <td style='text-align: center;'>10009</td>
+                        <td style='text-align: center;'>155232</td>
+                        <td style='text-align: center;'>56664</td>
+                        <td style='text-align: center;'>174271</td>
+                        <td style='text-align: center;'>11799</td>
+                    </tr>
+                    <tr>
+                        <td style='text-align: left;'>CISTA</td>
+                        <td style='text-align: center;'>3128</td>
+                        <td style='text-align: center;'>260</td>
+                        <td style='text-align: center;'>797</td>
+                        <td style='text-align: center;'>551</td>
+                        <td style='text-align: center;'>2220</td>
+                        <td style='text-align: center;'>3145</td>
+                        <td style='text-align: center;'>5521</td>
+                        <td style='text-align: center;'>1416</td>
+                        <td style='text-align: center;'>1054</td>
+                        <td style='text-align: center;'>1228</td>
+                        <td style='text-align: center;'>843</td>
+                        <td style='text-align: center;'>374</td>
+                    </tr>
+                    <tr>
+                        <td style='text-align: left;'>Labour</td>
+                        <td style='text-align: center;'>298932</td>
+                        <td style='text-align: center;'>4660</td>
+                        <td style='text-align: center;'>89631</td>
+                        <td style='text-align: center;'>10981</td>
+                        <td style='text-align: center;'>103952</td>
+                        <td style='text-align: center;'>31400</td>
+                        <td style='text-align: center;'>321161</td>
+                        <td style='text-align: center;'>11489</td>
+                        <td style='text-align: center;'>142598</td>
+                        <td style='text-align: center;'>106470</td>
+                        <td style='text-align: center;'>20482</td>
+                        <td style='text-align: center;'>6960</td>
+                    </tr>
+                    <tr>
+                        <td style='text-align: left;'>One Love</td>
+                        <td style='text-align: center;'>575</td>
+                        <td style='text-align: center;'>96</td>
+                        <td style='text-align: center;'>226</td>
+                        <td style='text-align: center;'>191</td>
+                        <td style='text-align: center;'>416</td>
+                        <td style='text-align: center;'>442</td>
+                        <td style='text-align: center;'>765</td>
+                        <td style='text-align: center;'>1165</td>
+                        <td style='text-align: center;'>238</td>
+                        <td style='text-align: center;'>560</td>
+                        <td style='text-align: center;'>134</td>
+                        <td style='text-align: center;'>133</td>
+                    </tr>
+                    <tr>
+                        <td style='text-align: left;'>Liberal Democrat</td>
+                        <td style='text-align: center;'>25351</td>
+                        <td style='text-align: center;'>546</td>
+                        <td style='text-align: center;'>2123</td>
+                        <td style='text-align: center;'>1663</td>
+                        <td style='text-align: center;'>23704</td>
+                        <td style='text-align: center;'>1943</td>
+                        <td style='text-align: center;'>36771</td>
+                        <td style='text-align: center;'>652</td>
+                        <td style='text-align: center;'>12087</td>
+                        <td style='text-align: center;'>9668</td>
+                        <td style='text-align: center;'>4356</td>
+                        <td style='text-align: center;'>1141</td>
+                    </tr>
+                    <tr>
+                        <td style='text-align: left;'>Women's Equality</td>
+                        <td style='text-align: center;'>10839</td>
+                        <td style='text-align: center;'>301</td>
+                        <td style='text-align: center;'>1056</td>
+                        <td style='text-align: center;'>832</td>
+                        <td style='text-align: center;'>7254</td>
+                        <td style='text-align: center;'>1363</td>
+                        <td style='text-align: center;'>20139</td>
+                        <td style='text-align: center;'>840</td>
+                        <td style='text-align: center;'>5389</td>
+                        <td style='text-align: center;'>3609</td>
+                        <td style='text-align: center;'>867</td>
+                        <td style='text-align: center;'>566</td>
+                    </tr>
+                    <tr>
+                        <td style='text-align: left;'>UKIP</td>
+                        <td style='text-align: center;'>5892</td>
+                        <td style='text-align: center;'>11753</td>
+                        <td style='text-align: center;'>2557</td>
+                        <td style='text-align: center;'>17987</td>
+                        <td style='text-align: center;'>24386</td>
+                        <td style='text-align: center;'>2259</td>
+                        <td style='text-align: center;'>5969</td>
+                        <td style='text-align: center;'>527</td>
+                        <td style='text-align: center;'>4201</td>
+                        <td style='text-align: center;'>2172</td>
+                        <td style='text-align: center;'>15919</td>
+                        <td style='text-align: center;'>751</td>
+                    </tr>
+                    <tr>
+                        <td style='border-bottom: 2px solid grey; text-align: left;'>Independent</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>1230</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>227</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>385</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>620</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>2638</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>714</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>1901</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>280</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>949</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>954</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>418</td>
+                        <td style='border-bottom: 2px solid grey; text-align: center;'>2886</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p>Like this.</p>
+        <img src="img/mdsbase.jpeg">
+
+        <p> The table represents the London mayoral election result in 2016. Voters are allowed to cast two votes: one for the most preferred and the other for the second preferred candidate. 898 voters on row 1, column 2 prefer Green the most, and BNP (the British Nationalist Party) the next.</p>
+
+        <p> This table can be used to measure the "distance" between different parties. For example, given a voter's most preferred party is Green (row 1), his or her second party is very unlikely to be BNP (0.6%). This tells us that Green and BNP are very distant in their policy platforms. Not very surprising, considering that BNP has been often accused of being fascist.</p>
+
+        <br>
+        <button type="button" class="collapsible">Why did you do this?</button>
+        <div class="content">
+            <p>There has been many survey-driven approaches to map the political landscapes into a two-dimensional world. Most of them are based on expert surveys (if experts say the Conservatives are rightist, they are) or popular surveys (if some sampled people say the Conservatives are rightist, they are). But what if they are lying? Could the sampling errors be negligible? Wouldn't partisan respondents portray their enemies more extremist than they actually are?</p>
+            <p> A simple solution: just look at the election result. Some elections allow voters to specify their first preferred candidate, second preferred candidate, so on (examples include London (mayoral), Ireland (general), and Australia (general)). These elections allow you to see how close or distant a party is from others. </p>
+
+        </div>
+
+        <br>
+
+    <button type="button" class="collapsible">How does it work?</button>
+    <div class="content">
+        <p>The key to solving this problem lies on two transformations:</p>
+        <h4 style="text-align: center">(1) Mapping vote results into distance</h4>
+        <h4 style="text-align: center">(2) Mapping distance into locations (coordinates)</h4>
+        <p> The first transformation can be done by applying any monotonically increasing function. For example, if BNP is closer to the Conservatives than to the Labour policy-wise, a BNP voter is more likely to vote for the Conservatives than to the Labour for his or her second vote.</p>
+
+        <p> The second mapping uses variants of multi-dimesional scaling (MDS) algorithm. Consider the following table to see how this works.</p>
+
+<div style="margin: 0 auto; display: table; margin-top: 1em;">
+<table class='gmisc_table' style='border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;' >
+<thead>
+<tr>
+<th style='border-bottom: 1px solid grey; border-top: 2px solid grey;'> </th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>New York</th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>Mexico City</th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;'>Toronto</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style='text-align: left; font-weight: 900;'>New York</td>
+<td style='text-align: center;'>0mi (0km)</td>
+<td style='text-align: center;'>2088mi (3360km)</td>
+<td style='text-align: center;'>344mi (554km)</td>
+</tr>
+<tr>
+    <td style='text-align: left; font-weight: 900;'>Mexico City</td>
+<td style='text-align: center;'>2088mi (3360km)</td>
+<td style='text-align: center;'>0mi (0km)</td>
+<td style='text-align: center;'>2028 mi (3264 km)</td>
+</tr>
+<tr>
+    <td style='border-bottom: 2px solid grey; text-align: left; font-weight: 900;'>Toronto</td>
+<td style='border-bottom: 2px solid grey; text-align: center;'>344mi (554km)</td>
+<td style='border-bottom: 2px solid grey; text-align: center;'>2028mi (3264km)</td>
+<td style='border-bottom: 2px solid grey; text-align: center;'>0mi (0km)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p> The table tells us how far New York, Mexico City, and Toronto are from each other. For this simple example, locating them on the map is similar to finding a triangle, given its edges are 2088 miles, 344 miles, and 2028 miles long (of course, assuming that the earth is flat). Generalizing the same logic, the voting result can be used to map the political terrain.</p>
+
+
+
+    </div>
+
+    </div>
+
+</section>
+
+<input name="tab" id="tab3" type="radio" />
+<section class="tab-content">
+    <a href="https://jaerinkim.github.com">Github</a>
+</section>
+
+
+<input name="tab" id="tab4" type="radio" />
+<section class="tab-content">
+    <h2> Under Construction </h2>
+</section>
+
+<input name="tab" id="tab5" type="radio" />
+<section class="tab-content">
+    <h2> Under Construction </h2>
+</section>
+
+<input name="tab" id="tab6" type="radio" />
+<section class="tab-content">
+<h2> Under Construction </h2>
+</section>
+
+    		</div>
+		</div>
+    </div>
+</section>
+     
+
+
+    <!-- Collapsible -->
+
+<script>
+ var coll = document.getElementsByClassName("collapsible");
+ var i;
+
+ for (i = 0; i < coll.length; i++) {
+     coll[i].addEventListener("click", function() {
+         this.classList.toggle("active");
+         var content = this.nextElementSibling;
+         if (content.style.display === "block") {
+             content.style.display = "none";
+         } else {
+             content.style.display = "block";
+         }
+     });
+ }
+</script>
+	</body>
+</html>
