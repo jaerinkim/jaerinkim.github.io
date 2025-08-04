@@ -38,20 +38,21 @@
         #map { width: 100%; height: 100%; }
 
         /* Controls */
-        .control-panel { position: absolute; top: 20px; right: 20px; background: var(--white); padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 350px; z-index: 999; }
-        .control-panel h3 { color: var(--primary); margin-bottom: 1rem; font-size: 1.3rem; font-weight: 900; }
-        .control-group { margin-bottom: 1rem; }
-        .control-group label { display: block; font-weight: 800; margin-bottom: 0.5rem; color: #333; font-size: 1rem; }
-        .control-group select, .control-group input[type="range"] { width: 100%; padding: 0.7rem; border: 2px solid var(--gray); border-radius: 8px; font-size: 1rem; background: var(--white); transition: border-color 0.2s; font-weight: 700; }
-        .control-group select:focus, .control-group input:focus { outline: none; border-color: var(--primary); }
+        .control-panel { position: absolute; top: 20px; right: 20px; background: var(--white); padding: 2rem; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); min-width: 400px; max-width: 450px; z-index: 999; }
+        .control-panel h3 { color: var(--primary); margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 900; }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-group label { display: block; font-weight: 800; margin-bottom: 0.8rem; color: #333; font-size: 1.1rem; }
+        .control-group select, .control-group input[type="range"] { width: 100%; padding: 1rem; border: 2px solid var(--gray); border-radius: 12px; font-size: 1.1rem; background: var(--white); transition: all 0.3s; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .control-group select:focus, .control-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 4px 12px rgba(102,126,234,0.3); transform: translateY(-2px); }
         
         /* Toggle Switch */
-        .toggle-switch { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; user-select: none; }
+        .toggle-switch { display: flex; align-items: center; gap: 1rem; cursor: pointer; user-select: none; padding: 0.8rem; border-radius: 12px; background: #f8f9fa; transition: all 0.3s; }
         .toggle-switch input[type="checkbox"] { display: none; }
-        .toggle-slider { width: 50px; height: 26px; background: #ddd; border-radius: 26px; position: relative; transition: background 0.3s; }
-        .toggle-slider::after { content: ''; position: absolute; width: 22px; height: 22px; background: var(--white); border-radius: 50%; top: 2px; left: 2px; transition: transform 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .toggle-switch input:checked + .toggle-slider { background: var(--primary); }
-        .toggle-switch input:checked + .toggle-slider::after { transform: translateX(24px); }
+        .toggle-switch:hover { background: #e9ecef; transform: translateY(-1px); }
+        .toggle-slider { width: 60px; height: 32px; background: #ddd; border-radius: 32px; position: relative; transition: all 0.3s; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        .toggle-slider::after { content: ''; position: absolute; width: 28px; height: 28px; background: var(--white); border-radius: 50%; top: 2px; left: 2px; transition: all 0.3s; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        .toggle-switch input:checked + .toggle-slider { background: linear-gradient(135deg, var(--primary), var(--secondary)); box-shadow: 0 4px 12px rgba(102,126,234,0.4); }
+        .toggle-switch input:checked + .toggle-slider::after { transform: translateX(28px); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
         
         /* Map Elements */
         .shop-marker { background: var(--white); border: 3px solid var(--primary); border-radius: 50%; width: 16px; height: 16px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
@@ -96,8 +97,11 @@
         /* Charts */
         .chart-container { width: 100%; height: 600px; margin: 2rem 0; position: relative; }
         .radar-container { width: 100%; height: 500px; margin: 2rem 0; }
-        .dimension-controls { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .dimension-controls { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
         .dimension-control { flex: 1; min-width: 200px; }
+        .dimension-control label { font-weight: 800; margin-bottom: 0.8rem; color: var(--primary); font-size: 1.1rem; }
+        .dimension-control select { padding: 1rem; border: 2px solid var(--gray); border-radius: 12px; font-size: 1rem; background: var(--white); transition: all 0.3s; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .dimension-control select:focus { border-color: var(--primary); box-shadow: 0 4px 12px rgba(102,126,234,0.3); transform: translateY(-2px); }
         .chart-container canvas { font-weight: 700 !important; }
         
         /* Point Line Chart for Shop Details */
@@ -113,11 +117,13 @@
         .point-label.local { background: var(--danger); color: var(--white); top: -55px; }
 
         /* Buttons */
-        .btn { padding: 0.8rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; }
-        .btn-primary { background: var(--primary); color: var(--white); }
-        .btn-primary:hover { background: var(--secondary); transform: translateY(-2px); }
-        .btn-danger { background: var(--danger); color: var(--white); }
-        .btn-success { background: var(--success); color: var(--white); }
+        .btn { padding: 1rem 2rem; border: none; border-radius: 12px; cursor: pointer; font-size: 1rem; font-weight: 700; transition: all 0.3s; box-shadow: 0 4px 12px rgba(0,0,0,0.15); text-transform: none; letter-spacing: 0.5px; margin: 0; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: var(--white); border: 2px solid transparent; }
+        .btn-primary:hover { background: linear-gradient(135deg, var(--secondary), var(--primary)); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(102,126,234,0.4); }
+        .btn-danger { background: linear-gradient(135deg, var(--danger), #c0392b); color: var(--white); border: 2px solid transparent; }
+        .btn-success { background: linear-gradient(135deg, var(--success), #27ae60); color: var(--white); border: 2px solid transparent; }
+        .btn-success:hover { background: linear-gradient(135deg, #27ae60, var(--success)); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(46,204,113,0.4); }
+        .btn-danger:hover { background: linear-gradient(135deg, #c0392b, var(--danger)); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(231,76,60,0.4); }
 
         /* Loading & Download */
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 1.5rem; font-size: 1.8rem; color: var(--primary); font-weight: 600; }
@@ -135,10 +141,11 @@
         .outlier-item { background: var(--white); padding: 1.5rem; margin-bottom: 1rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.3s; }
         .outlier-item:hover { transform: translateY(-4px); box-shadow: 0 8px 16px rgba(0,0,0,0.15); }
         
-        .variable-controls { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; }
-        .variable-tag { background: var(--gray); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
-        .variable-tag.active { background: var(--primary); color: var(--white); }
-        .variable-remove { background: var(--danger); color: var(--white); border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 0.8rem; }
+        .variable-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+        .variable-tag { background: linear-gradient(135deg, var(--gray), #d0d0d0); padding: 0.7rem 1.2rem; border-radius: 25px; font-size: 0.9rem; display: flex; align-items: center; gap: 0.6rem; transition: all 0.3s; box-shadow: 0 2px 6px rgba(0,0,0,0.1); font-weight: 600; }
+        .variable-tag.active { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: var(--white); box-shadow: 0 4px 12px rgba(102,126,234,0.3); transform: translateY(-2px); }
+        .variable-remove { background: linear-gradient(135deg, var(--danger), #c0392b); color: var(--white); border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .variable-remove:hover { transform: scale(1.1); box-shadow: 0 4px 8px rgba(231,76,60,0.4); }
     </style>
 </head>
 <body>
@@ -177,7 +184,7 @@
                         <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
                         <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
                     </svg>
-                    <span>프랜차이즈 분석</span>
+                    <span>음식점 유형 분석</span>
                 </div>
                 <div class="nav-item" data-page="typemap-page">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -275,6 +282,12 @@ let currentPage = 'map-page', confidenceThreshold = 70;
 let charts = {};
 
 const GwangmyeongCenter = [37.4786, 126.8644];
+const AreaBounds = {
+    north: 37.4786 + 0.075,  // 1.5x the original 0.05 range
+    south: 37.4786 - 0.075,
+    east: 126.8644 + 0.075,
+    west: 126.8644 - 0.075
+};
 const loadingOverlay = document.getElementById('loadingOverlay');
 
 const variableLabels = {
@@ -360,8 +373,8 @@ function parseRealData(jsonlText, csvText) {
                 key: key,
                 name: key.split(' at ')[0],
                 address: key.split(' at ')[1],
-                lat: parseFloat(extra.lat) || (GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.05),
-                lng: parseFloat(extra.lng) || (GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.05),
+                lat: parseFloat(extra.lat) || (GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.15),  // 1.5x larger area
+                lng: parseFloat(extra.lng) || (GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.15),
                 subcategory: extra.subcategory || detectSubcategory(parsed),
                 emd: extra.emd_name || getRandomEmd(),
                 franchise: detectFranchise(key),
@@ -406,8 +419,8 @@ function generateMockData() {
                 key: `${emd}${i}_restaurant at 경기도 광명시 ${emd} ${i+1}`,
                 name: `${emd} ${subcategory} ${i + 1}`,
                 address: `경기도 광명시 ${emd} ${i+1}번지`,
-                lat: GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.05,
-                lng: GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.05,
+                lat: GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.15,  // 1.5x larger area
+                lng: GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.15,
                 emd: emd,
                 subcategory: subcategory,
                 franchise: franchise,
@@ -557,7 +570,7 @@ function initApp() {
 }
 
 function initMap() {
-    map = L.map('map', { center: GwangmyeongCenter, zoom: 13, scrollWheelZoom: true });
+    map = L.map('map', { center: GwangmyeongCenter, zoom: 12, scrollWheelZoom: true }); // Zoomed out to show larger area
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
@@ -718,19 +731,63 @@ function updateHeatmap() {
     const variable = document.getElementById('heatmapVariable')?.value || 'price_level';
     const category = document.getElementById('mapCategoryFilter')?.value || 'all';
     
-    const data = allRestaurants.filter(r => {
-        return (r.avg_confidence >= 70) && (category === 'all' || r.subcategory === category);
-    }).map(r => [r.lat, r.lng, Math.min(getScoreValue(r, variable) / 100, 1)]);
-
-    if (data.length > 0) {
-        heatLayer = L.heatLayer(data, {
-            radius: 20,
-            blur: 15,
+    // Create a comprehensive kernel density grid even where no restaurants exist
+    const gridData = generateKernelDensityGrid(variable, category);
+    
+    if (gridData.length > 0) {
+        heatLayer = L.heatLayer(gridData, {
+            radius: 35,      // Larger radius for better coverage
+            blur: 25,        // More blur for smoother appearance
             maxZoom: 17,
-            gradient: {0.2: 'blue', 0.4: 'cyan', 0.6: 'lime', 0.8: 'yellow', 1.0: 'red'}
+            minOpacity: 0.3, // Ensure visibility even in sparse areas
+            gradient: {
+                0.0: 'rgba(0,0,255,0.6)',     // Blue with transparency
+                0.2: 'rgba(0,255,255,0.7)',   // Cyan
+                0.4: 'rgba(0,255,0,0.8)',     // Green
+                0.6: 'rgba(255,255,0,0.8)',   // Yellow
+                0.8: 'rgba(255,165,0,0.9)',   // Orange
+                1.0: 'rgba(255,0,0,1.0)'      // Red
+            }
         }).addTo(map);
-        // Don't hide markers - we want both visible
     }
+}
+
+function generateKernelDensityGrid(variable, category) {
+    const filteredRestaurants = allRestaurants.filter(r => {
+        return (r.avg_confidence >= 70) && (category === 'all' || r.subcategory === category);
+    });
+    
+    const gridData = [];
+    const gridSize = 0.005; // Grid resolution
+    
+    // Create a denser grid covering the enlarged area
+    for (let lat = AreaBounds.south; lat <= AreaBounds.north; lat += gridSize) {
+        for (let lng = AreaBounds.west; lng <= AreaBounds.east; lng += gridSize) {
+            let density = 0;
+            const bandwidth = 0.01; // Kernel bandwidth
+            
+            // Calculate kernel density at this grid point
+            filteredRestaurants.forEach(r => {
+                const distance = Math.sqrt(Math.pow(lat - r.lat, 2) + Math.pow(lng - r.lng, 2));
+                const kernelValue = gaussianKernel(distance, bandwidth);
+                const restaurantScore = getScoreValue(r, variable) / 100;
+                density += kernelValue * restaurantScore;
+            });
+            
+            // Add base density to ensure visibility everywhere
+            density = Math.max(density, 0.1);
+            
+            if (density > 0.05) { // Only add points with meaningful density
+                gridData.push([lat, lng, Math.min(density, 1)]);
+            }
+        }
+    }
+    
+    return gridData;
+}
+
+function gaussianKernel(distance, bandwidth) {
+    return Math.exp(-0.5 * Math.pow(distance / bandwidth, 2)) / (bandwidth * Math.sqrt(2 * Math.PI));
 }
 
 // ==================== FEATURE 2: EMD COMPARISON ====================
@@ -740,8 +797,8 @@ function renderComparisonPage() {
     page.innerHTML = `
         <div class="page-content">
             <div class="page-header">
-                <h2>📊 읍면동 비교 분석</h2>
-                <p>두 읍면동을 선택하여 주요 상권 지표를 비교 분석합니다.</p>
+                <h2>📊 지역 특성 비교</h2>
+                <p>두 지역을 선택하여 주요 상권 지표를 비교 분석합니다.</p>
             </div>
             <div class="dimension-controls">
                 <div class="control-group">
@@ -813,6 +870,14 @@ function renderEmdComparisonChart(emdA, emdB, variables) {
     const dataA = stats.emd[emdA];
     const dataB = stats.emd[emdB];
     
+    // Calculate responsive scale range based on actual data
+    const allValues = variables.flatMap(v => [
+        dataA[v] ? dataA[v].mean : 0,
+        dataB[v] ? dataB[v].mean : 0
+    ]);
+    const minValue = Math.max(0, Math.min(...allValues) - 10);
+    const maxValue = Math.min(100, Math.max(...allValues) + 10);
+    
     const ctx = document.getElementById('comparisonCanvas').getContext('2d');
     if (charts.comparison) charts.comparison.destroy();
     
@@ -843,8 +908,8 @@ function renderEmdComparisonChart(emdA, emdB, variables) {
             indexAxis: 'y',
             scales: { 
                 x: { 
-                    beginAtZero: true, 
-                    max: 100,
+                    min: minValue, 
+                    max: maxValue,
                     ticks: { 
                         font: { size: 14, weight: 'bold' },
                         color: '#333'
@@ -1028,32 +1093,45 @@ function renderShopDetail(shop) {
     updateVariableDisplay();
 }
 
-function renderShopComparison(shop) {
+function renderShopComparison(shop1, shop2 = null) {
     const container = document.getElementById('shopComparisonSection');
-    container.innerHTML = `
-        <h3>⚔️ 경쟁 가게와 비교</h3>
-        <button id="compareBtn" class="btn btn-primary">새로운 가게와 비교하기</button>
-        <div id="radarContainer" class="radar-container" style="display:none;">
-            <canvas id="radarChart"></canvas>
-        </div>
-        <p id="comparisonInstructions">버튼을 눌러서 이 지역의 다른 가게와 비교해보세요.</p>
-    `;
+    
+    if (shop2) {
+        // Direct comparison mode (from "다른 가게 분석" button)
+        container.innerHTML = `
+            <h3>⚔️ 가게 직접 비교</h3>
+            <div id="radarContainer" class="radar-container">
+                <canvas id="radarChart"></canvas>
+            </div>
+        `;
+        drawRadarChart(shop1, shop2);
+    } else {
+        // Original comparison mode
+        container.innerHTML = `
+            <h3>⚔️ 경쟁 가게와 비교</h3>
+            <button id="compareBtn" class="btn btn-primary">새로운 가게와 비교하기</button>
+            <div id="radarContainer" class="radar-container" style="display:none;">
+                <canvas id="radarChart"></canvas>
+            </div>
+            <p id="comparisonInstructions">버튼을 눌러서 이 지역의 다른 가게와 비교해보세요.</p>
+        `;
 
-    document.getElementById('compareBtn').onclick = () => {
-        const potentialCompetitors = allRestaurants.filter(r => 
-            r.key !== shop.key && 
-            r.emd === shop.emd && 
-            r.avg_confidence >= 70
-        );
-        if (potentialCompetitors.length > 0) {
-            const competitor = potentialCompetitors[Math.floor(Math.random() * potentialCompetitors.length)];
-            document.getElementById('radarContainer').style.display = 'block';
-            document.getElementById('comparisonInstructions').style.display = 'none';
-            drawRadarChart(shop, competitor);
-        } else {
-            document.getElementById('comparisonInstructions').textContent = '이 지역에 비교할 다른 가게가 없습니다.';
-        }
-    };
+        document.getElementById('compareBtn').onclick = () => {
+            const potentialCompetitors = allRestaurants.filter(r => 
+                r.key !== shop1.key && 
+                r.emd === shop1.emd && 
+                r.avg_confidence >= 70
+            );
+            if (potentialCompetitors.length > 0) {
+                const competitor = potentialCompetitors[Math.floor(Math.random() * potentialCompetitors.length)];
+                document.getElementById('radarContainer').style.display = 'block';
+                document.getElementById('comparisonInstructions').style.display = 'none';
+                drawRadarChart(shop1, competitor);
+            } else {
+                document.getElementById('comparisonInstructions').textContent = '이 지역에 비교할 다른 가게가 없습니다.';
+            }
+        };
+    }
 }
 
 function drawRadarChart(shop1, shop2) {
@@ -1143,42 +1221,45 @@ function drawRadarChart(shop1, shop2) {
 // ==================== FEATURE 5: FRANCHISE ANALYSIS ====================
 function renderFranchisePage() {
     const page = document.getElementById('franchise-page');
-    const franchises = Object.keys(stats.franchise);
+    const subcategories = Object.keys(stats.subcategory);
     
     page.innerHTML = `
         <div class="page-content">
             <div class="page-header">
-                <h2>🏢 프랜차이즈 분석</h2>
-                <p>프랜차이즈별 매장 현황과 특이점을 분석합니다.</p>
+                <h2>🍽️ 음식점 유형 분석</h2>
+                <p>음식점 유형별 매장 현황과 특성을 분석합니다.</p>
             </div>
             <div class="control-group">
-                <label for="franchiseSelect">프랜차이즈 선택</label>
-                <select id="franchiseSelect">
-                    <option value="">프랜차이즈를 선택하세요</option>
-                    ${franchises.map(f => `<option value="${f}">${f}</option>`).join('')}
+                <label for="subcategorySelect">음식점 유형 선택</label>
+                <select id="subcategorySelect">
+                    <option value="">음식점 유형을 선택하세요</option>
+                    ${subcategories.map(s => `<option value="${s}" ${s === '한식' ? 'selected' : ''}>${s}</option>`).join('')}
                 </select>
             </div>
             <div id="franchiseContent"></div>
         </div>
     `;
     
-    document.getElementById('franchiseSelect').addEventListener('change', (e) => {
-        if (e.target.value) updateFranchiseAnalysis(e.target.value);
+    document.getElementById('subcategorySelect').addEventListener('change', (e) => {
+        if (e.target.value) updateSubcategoryAnalysis(e.target.value);
     });
+    
+    // Auto-load 한식 by default
+    setTimeout(() => updateSubcategoryAnalysis('한식'), 100);
 }
 
-function updateFranchiseAnalysis(franchise) {
-    const franchiseShops = allRestaurants.filter(r => r.franchise === franchise);
-    if (franchiseShops.length === 0) {
-        document.getElementById('franchiseContent').innerHTML = '<p>해당 프랜차이즈 데이터가 없습니다.</p>';
+function updateSubcategoryAnalysis(subcategory) {
+    const subcategoryShops = allRestaurants.filter(r => r.subcategory === subcategory);
+    if (subcategoryShops.length === 0) {
+        document.getElementById('franchiseContent').innerHTML = '<p>해당 음식점 유형 데이터가 없습니다.</p>';
         return;
     }
     
-    const franchiseAvg = stats.franchise[franchise];
-    const outliers = franchiseShops.map(shop => {
+    const subcategoryAvg = stats.subcategory[subcategory];
+    const outliers = subcategoryShops.map(shop => {
         const deviations = Object.keys(variableLabels).map(variable => {
             const shopValue = getScoreValue(shop, variable);
-            const avgValue = franchiseAvg[variable] ? franchiseAvg[variable].mean : 0;
+            const avgValue = subcategoryAvg[variable] ? subcategoryAvg[variable].mean : 0;
             return {
                 variable: variable,
                 deviation: Math.abs(shopValue - avgValue),
@@ -1197,7 +1278,7 @@ function updateFranchiseAnalysis(franchise) {
                 <h3>🎯 가장 차별화된 매장</h3>
                 <div style="max-height: 600px; overflow-y: auto;">
                     ${outliers.slice(0, 8).map(o => `
-                        <div class="outlier-item" onclick="showFranchiseComparison('${o.shop.key}', '${franchise}')">
+                        <div class="outlier-item" onclick="showSubcategoryComparison('${o.shop.key}', '${subcategory}')">
                             <h4>${o.shop.name}</h4>
                             <p style="color: #666; margin: 0.5rem 0;">${o.shop.address}</p>
                             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1218,38 +1299,45 @@ function updateFranchiseAnalysis(franchise) {
     `;
 }
 
-window.showFranchiseComparison = (shopKey, franchise) => {
+window.showSubcategoryComparison = (shopKey, subcategory) => {
     const shop = allRestaurants.find(r => r.key === shopKey);
-    const franchiseAvg = stats.franchise[franchise];
+    const subcategoryAvg = stats.subcategory[subcategory];
     
     const container = document.getElementById('franchiseComparison');
     const varsToDisplay = ['price_level', 'offering_quality_core', 'cleanliness_and_hygiene', 'service_staff_friendliness', 'atmosphere_formality', 'operational_speed_and_efficiency'];
     
     container.innerHTML = `
-        <h3>📈 프랜차이즈 평균과 비교</h3>
+        <h3>📈 음식점 유형 평균과 비교</h3>
         <h4>${shop.name}</h4>
         <p style="margin-bottom: 1.5rem; color: #666;">${shop.address}</p>
         <div style="margin-bottom: 1rem;">
             <small style="color: #666;">
                 <span style="color: var(--info);">■</span> ${shop.name} &nbsp;
-                <span style="color: #333;">■</span> ${franchise} 평균
+                <span style="color: #333;">■</span> ${subcategory} 평균
             </small>
         </div>
     ` + varsToDisplay.map(v => {
         const shopScore = getScoreValue(shop, v);
-        const franchiseScore = franchiseAvg[v] ? franchiseAvg[v].mean : 0;
-        const diff = shopScore - franchiseScore;
+        const subcategoryScore = subcategoryAvg[v] ? subcategoryAvg[v].mean : 0;
+        const diff = shopScore - subcategoryScore;
         return `
-        <div class="stat-bar">
-            <div class="stat-label">
-                <span>${variableLabels[v]}</span>
+        <div class="point-line-chart" style="margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="font-weight: 800;">${variableLabels[v]}</span>
                 <span style="color: ${diff > 0 ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">
                     ${diff > 0 ? '+' : ''}${diff.toFixed(1)}
                 </span>
             </div>
-            <div class="stat-bar-container">
-                <div class="stat-bar-fill stat-bar-city" style="width: ${franchiseScore}%;"></div>
-                <div class="stat-bar-fill stat-bar-shop" style="width: ${shopScore}%;"></div>
+            <div class="point-line">
+                <div class="point-marker city" style="left: ${subcategoryScore}%;">
+                    <div class="point-label city">${subcategory} 평균</div>
+                </div>
+                <div class="point-marker shop" style="left: ${shopScore}%;">
+                    <div class="point-label shop">${shop.name}</div>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.7rem; color: #666; font-weight: 700;">
+                <span>0</span><span>25</span><span>50</span><span>75</span><span>100</span>
             </div>
         </div>
         `;
@@ -1315,6 +1403,14 @@ function updateTypeMap() {
         }
     });
     
+    // Calculate responsive scale ranges
+    const allXValues = Object.values(subcategoryData).map(d => d.x);
+    const allYValues = Object.values(subcategoryData).map(d => d.y);
+    const xMin = Math.max(0, Math.min(...allXValues) - 5);
+    const xMax = Math.min(100, Math.max(...allXValues) + 5);
+    const yMin = Math.max(0, Math.min(...allYValues) - 5);
+    const yMax = Math.min(100, Math.max(...allYValues) + 5);
+    
     const ctx = document.getElementById('typeMapChart').getContext('2d');
     if (charts.typeMap) charts.typeMap.destroy();
     
@@ -1348,7 +1444,7 @@ function updateTypeMap() {
                         font: { size: 14, weight: 'bold' },
                         color: '#333'
                     },
-                    min: 0, max: 100
+                    min: xMin, max: xMax
                 },
                 y: {
                     title: { 
@@ -1361,7 +1457,7 @@ function updateTypeMap() {
                         font: { size: 14, weight: 'bold' },
                         color: '#333'
                     },
-                    min: 0, max: 100
+                    min: yMin, max: yMax
                 }
             },
             plugins: {
@@ -1395,30 +1491,34 @@ function renderStrategyMapPage() {
         <div class="page-content">
             <div class="page-header">
                 <h2>🎯 가게별 전략 지도</h2>
-                <p>선택한 지역의 가게들을 변수별로 시각화하여 포지셔닝을 분석합니다.</p>
+                <p>선택한 음식점 유형의 가게들을 변수별로 시각화하여 포지셔닝을 분석합니다. 점을 클릭하면 상세한 가게 정보를 확인할 수 있습니다.</p>
             </div>
-            <div class="dimension-controls">
+            <div class="dimension-controls" style="gap: 0.5rem;">
                 <div class="dimension-control">
-                    <label style="font-weight: 700;">읍면동 선택</label>
-                    <select id="strategyEmd" style="font-weight: 600;">
-                        ${emds.map(e => `<option value="${e}" ${e === randomEmd ? 'selected' : ''}>${e}</option>`).join('')}
+                    <label style="font-weight: 800; color: var(--primary); font-size: 1.1rem; margin-bottom: 0.8rem;">음식점 유형</label>
+                    <select id="strategySubcategory" style="padding: 1rem; border: 2px solid var(--primary); border-radius: 12px; font-size: 1rem; background: linear-gradient(135deg, var(--white), #f8f9fa); transition: all 0.3s; font-weight: 700; box-shadow: 0 4px 12px rgba(102,126,234,0.2);">
+                        ${[...new Set(allRestaurants.map(r => r.subcategory))].sort().map(s => `<option value="${s}" ${s === '한식' ? 'selected' : ''}>${s}</option>`).join('')}
                     </select>
                 </div>
                 <div class="dimension-control">
-                    <label style="font-weight: 700;">X축 변수</label>
-                    <select id="strategyX" style="font-weight: 600;">
+                    <label style="font-weight: 800; color: var(--primary); font-size: 1.1rem; margin-bottom: 0.8rem;">X축 변수</label>
+                    <select id="strategyX" style="padding: 1rem; border: 2px solid var(--secondary); border-radius: 12px; font-size: 1rem; background: linear-gradient(135deg, var(--white), #f8f9fa); transition: all 0.3s; font-weight: 700; box-shadow: 0 4px 12px rgba(118,75,162,0.2);">
                         ${Object.entries(variableLabels).map(([k,v]) => 
                             `<option value="${k}" ${k === 'price_level' ? 'selected' : ''}>${v}</option>`
                         ).join('')}
                     </select>
                 </div>
                 <div class="dimension-control">
-                    <label style="font-weight: 700;">Y축 변수</label>
-                    <select id="strategyY" style="font-weight: 600;">
+                    <label style="font-weight: 800; color: var(--primary); font-size: 1.1rem; margin-bottom: 0.8rem;">Y축 변수</label>
+                    <select id="strategyY" style="padding: 1rem; border: 2px solid var(--success); border-radius: 12px; font-size: 1rem; background: linear-gradient(135deg, var(--white), #f8f9fa); transition: all 0.3s; font-weight: 700; box-shadow: 0 4px 12px rgba(46,204,113,0.2);">
                         ${Object.entries(variableLabels).map(([k,v]) => 
                             `<option value="${k}" ${k === 'offering_quality_core' ? 'selected' : ''}>${v}</option>`
                         ).join('')}
                     </select>
+                </div>
+                <div class="dimension-control">
+                    <label style="font-weight: 800; color: var(--primary); font-size: 1.1rem; margin-bottom: 0.8rem;">다른 가게 분석</label>
+                    <button id="analyzeOtherShop" class="btn btn-primary" style="width: 100%; margin: 0; padding: 1rem; font-size: 1rem;">다른 가게와 비교하기</button>
                 </div>
             </div>
             <div class="chart-container">
@@ -1428,45 +1528,99 @@ function renderStrategyMapPage() {
         </div>
     `;
     
-    document.getElementById('strategyEmd').addEventListener('change', updateStrategyMap);
+    document.getElementById('strategySubcategory').addEventListener('change', updateStrategyMap);
     document.getElementById('strategyX').addEventListener('change', updateStrategyMap);
     document.getElementById('strategyY').addEventListener('change', updateStrategyMap);
+    
+    // Add event listener for "다른 가게 분석" button
+    document.getElementById('analyzeOtherShop').addEventListener('click', () => {
+        const subcategory = document.getElementById('strategySubcategory').value;
+        const subcategoryRestaurants = allRestaurants.filter(r => r.subcategory === subcategory && r.avg_confidence >= 80);
+        
+        if (subcategoryRestaurants.length >= 2) {
+            // Select two random restaurants for comparison
+            const shuffled = [...subcategoryRestaurants].sort(() => 0.5 - Math.random());
+            const shop1 = shuffled[0];
+            const shop2 = shuffled[1];
+            
+            // Show comparison in modal
+            document.getElementById('shopModalTitle').textContent = `${shop1.name} vs ${shop2.name} 비교 분석`;
+            
+            // Render comparison
+            renderShopComparison(shop1, shop2);
+            document.getElementById('shopModal').style.display = 'flex';
+        } else {
+            alert('비교할 다른 가게가 충분하지 않습니다.');
+        }
+    });
     
     // Show content immediately with random area
     setTimeout(updateStrategyMap, 100);
 }
 
 function updateStrategyMap() {
-    const emd = document.getElementById('strategyEmd').value;
-    if (!emd) return;
+    const subcategory = document.getElementById('strategySubcategory').value;
+    if (!subcategory) return;
     
     const xVar = document.getElementById('strategyX').value;
     const yVar = document.getElementById('strategyY').value;
     
-    const emdRestaurants = allRestaurants
-        .filter(r => r.emd === emd && r.avg_confidence >= 80)
+    const subcategoryRestaurants = allRestaurants
+        .filter(r => r.subcategory === subcategory && r.avg_confidence >= 80)
         .sort(() => 0.5 - Math.random())
         .slice(0, 40);
+    
+    // Calculate responsive scale ranges for better visualization
+    const xValues = subcategoryRestaurants.map(r => getScoreValue(r, xVar));
+    const yValues = subcategoryRestaurants.map(r => getScoreValue(r, yVar));
+    const xMin = Math.max(0, Math.min(...xValues) - 5);
+    const xMax = Math.min(100, Math.max(...xValues) + 5);
+    const yMin = Math.max(0, Math.min(...yValues) - 5);
+    const yMax = Math.min(100, Math.max(...yValues) + 5);
     
     const ctx = document.getElementById('strategyChart').getContext('2d');
     if (charts.strategy) charts.strategy.destroy();
     
-    charts.strategy = new Chart(ctx, {
-        type: 'scatter',
-        data: {
-            datasets: [{
-                label: '가게',
-                data: emdRestaurants.map(r => ({
-                    x: getScoreValue(r, xVar),
-                    y: getScoreValue(r, yVar),
-                    restaurant: r
-                })),
-                backgroundColor: 'rgba(102, 126, 234, 0.6)',
-                borderColor: 'rgba(102, 126, 234, 1)',
-                borderWidth: 2,
-                pointRadius: 8,
-                pointHoverRadius: 12
-            }]
+            // Create diverse colors for different restaurants
+        const colors = [
+            'rgba(231, 76, 60, 0.8)',   // Red
+            'rgba(52, 152, 219, 0.8)',  // Blue
+            'rgba(46, 204, 113, 0.8)',  // Green
+            'rgba(155, 89, 182, 0.8)',  // Purple
+            'rgba(241, 196, 15, 0.8)',  // Yellow
+            'rgba(230, 126, 34, 0.8)',  // Orange
+            'rgba(52, 73, 94, 0.8)',    // Dark Gray
+            'rgba(26, 188, 156, 0.8)',  // Turquoise
+            'rgba(142, 68, 173, 0.8)',  // Dark Purple
+            'rgba(39, 174, 96, 0.8)'    // Dark Green
+        ];
+        
+        charts.strategy = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    data: subcategoryRestaurants.map((r, index) => ({
+                        x: getScoreValue(r, xVar),
+                        y: getScoreValue(r, yVar),
+                        restaurant: r,
+                        backgroundColor: colors[index % colors.length],
+                        borderColor: colors[index % colors.length].replace('0.8', '1.0'),
+                        pointRadius: 10,
+                        pointHoverRadius: 15
+                    })),
+                    showLine: false,
+                    pointBackgroundColor: function(context) {
+                        const index = context.dataIndex;
+                        return colors[index % colors.length];
+                    },
+                    pointBorderColor: function(context) {
+                        const index = context.dataIndex;
+                        return colors[index % colors.length].replace('0.8', '1.0');
+                    },
+                    pointRadius: 10,
+                    pointHoverRadius: 15,
+                    borderWidth: 3
+                }]
         },
         options: {
             responsive: true,
@@ -1483,7 +1637,7 @@ function updateStrategyMap() {
                         font: { size: 14, weight: 'bold' },
                         color: '#333'
                     },
-                    min: 0, max: 100
+                    min: xMin, max: xMax
                 },
                 y: {
                     title: { 
@@ -1496,21 +1650,29 @@ function updateStrategyMap() {
                         font: { size: 14, weight: 'bold' },
                         color: '#333'
                     },
-                    min: 0, max: 100
+                    min: yMin, max: yMax
                 }
             },
             plugins: {
+                legend: { display: false }, // Remove legend as requested
                 tooltip: {
                     titleFont: { size: 14, weight: 'bold' },
                     bodyFont: { size: 12, weight: 'normal' },
                     callbacks: {
-                        label: function(context) {
-                            const r = context.raw.restaurant;
+                        title: function(context) {
+                            const r = context[0].raw.restaurant;
                             return r.name;
+                        },
+                        label: function(context) {
+                            return `${variableLabels[xVar]}: ${context.parsed.x.toFixed(1)}`;
                         },
                         afterLabel: function(context) {
                             const r = context.raw.restaurant;
-                            return r.latent_summary ? r.latent_summary.substring(0, 50) + '...' : '';
+                            return [
+                                `${variableLabels[yVar]}: ${context.parsed.y.toFixed(1)}`,
+                                '',
+                                r.latent_summary ? r.latent_summary.substring(0, 80) + '...' : ''
+                            ];
                         }
                     }
                 }
@@ -1518,8 +1680,15 @@ function updateStrategyMap() {
             onHover: (event, activeElements) => {
                 if (activeElements.length > 0) {
                     const dataIndex = activeElements[0].index;
-                    const restaurant = emdRestaurants[dataIndex];
+                    const restaurant = subcategoryRestaurants[dataIndex];
                     showStrategyHoverInfo(restaurant, xVar, yVar);
+                }
+            },
+            onClick: (event, activeElements) => {
+                if (activeElements.length > 0) {
+                    const dataIndex = activeElements[0].index;
+                    const restaurant = subcategoryRestaurants[dataIndex];
+                    showShopDetailModal(restaurant); // Make dots clickable like in 지도분석
                 }
             }
         }
@@ -1679,30 +1848,54 @@ async function downloadPDF() {
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         
-        const pagesToCapture = ['map-page', 'heatmap-page', 'comparison-page', 'franchise-page', 'typemap-page', 'strategymap-page'];
+        // Add cover page with current selections and annotations
+        addCoverPage(pdf);
+        
+        const pagesToCapture = ['map-page', 'comparison-page', 'franchise-page', 'typemap-page', 'strategymap-page'];
+        const pageDescriptions = {
+            'map-page': '지도 분석: 음식점 위치와 히트맵을 통한 상권 분석. 점을 클릭하면 상세 정보를 확인할 수 있습니다.',
+            'comparison-page': '지역 특성 비교: 두 지역의 주요 지표를 비교 분석합니다. 변수를 추가/제거하여 맞춤 분석이 가능합니다.',
+            'franchise-page': '음식점 유형 분석: 선택된 음식점 유형의 차별화된 매장들을 분석합니다.',
+            'typemap-page': '음식점 유형 지도: 각 음식점 유형의 특성을 2차원 지도로 시각화합니다.',
+            'strategymap-page': '가게별 전략 지도: 선택된 음식점 유형의 가게들을 변수별로 시각화하여 포지셔닝을 분석합니다.'
+        };
         
         for(let i = 0; i < pagesToCapture.length; i++) {
-            loadingOverlay.querySelector('p').textContent = `PDF 생성 중... (${i+1}/${pagesToCapture.length})`;
+            loadingOverlay.querySelector('p').textContent = `PDF 생성 중... (${i+2}/${pagesToCapture.length+1})`;
+            
+            pdf.addPage();
+            
+            // Add page title and description
+            pdf.setFontSize(16);
+            pdf.setFont(undefined, 'bold');
+            pdf.text(pageDescriptions[pagesToCapture[i]].split(':')[0], 20, 25);
+            
+            pdf.setFontSize(10);
+            pdf.setFont(undefined, 'normal');
+            const description = pageDescriptions[pagesToCapture[i]].split(':')[1];
+            const lines = pdf.splitTextToSize(description, 170);
+            pdf.text(lines, 20, 35);
             
             navigateTo(pagesToCapture[i]);
             await new Promise(resolve => setTimeout(resolve, 2000));
             
             const canvas = await html2canvas(document.getElementById(pagesToCapture[i]), { 
-                scale: 1.5,
+                scale: 1.2,
                 logging: false,
-                useCORS: true
+                useCORS: true,
+                height: window.innerHeight - 100
             });
             const imgData = canvas.toDataURL('image/png');
             
             const imgProps = pdf.getImageProperties(imgData);
-            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfWidth = pdf.internal.pageSize.getWidth() - 40;
             const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
             
-            if (i > 0) pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.addImage(imgData, 'PNG', 20, 50, pdfWidth, Math.min(pdfHeight, 230));
         }
         
-        pdf.save('상권분석_리포트.pdf');
+        const currentDate = new Date().toLocaleDateString('ko-KR');
+        pdf.save(`상권분석_리포트_${currentDate}.pdf`);
         
     } catch(e) {
         console.error("PDF generation failed:", e);
@@ -1712,6 +1905,78 @@ async function downloadPDF() {
         loadingOverlay.querySelector('p').textContent = '데이터를 불러오는 중입니다...';
         navigateTo('map-page');
     }
+}
+
+function addCoverPage(pdf) {
+    // Cover page with current selections
+    pdf.setFontSize(24);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('상권.shop 분석 리포트', 20, 30);
+    
+    pdf.setFontSize(14);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`생성일시: ${new Date().toLocaleDateString('ko-KR')} ${new Date().toLocaleTimeString('ko-KR')}`, 20, 45);
+    
+    // Current selections summary
+    pdf.setFontSize(16);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('현재 선택 사항', 20, 65);
+    
+    pdf.setFontSize(12);
+    pdf.setFont(undefined, 'normal');
+    let yPos = 80;
+    
+    // Get current selections from various pages
+    const heatmapVar = document.getElementById('heatmapVariable')?.value || '설정되지 않음';
+    const categoryFilter = document.getElementById('mapCategoryFilter')?.value || '전체';
+    const deviationMode = document.getElementById('deviationToggle')?.checked ? '활성화' : '비활성화';
+    
+    pdf.text(`• 히트맵 변수: ${variableLabels[heatmapVar] || heatmapVar}`, 25, yPos);
+    yPos += 10;
+    pdf.text(`• 업종 필터: ${categoryFilter}`, 25, yPos);
+    yPos += 10;
+    pdf.text(`• 틈새 시장 표시: ${deviationMode}`, 25, yPos);
+    yPos += 15;
+    
+    // Summary statistics
+    pdf.setFontSize(16);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('데이터 요약', 20, yPos);
+    yPos += 15;
+    
+    pdf.setFontSize(12);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`• 전체 음식점 수: ${allRestaurants.length}개`, 25, yPos);
+    yPos += 10;
+    
+    const subcategories = [...new Set(allRestaurants.map(r => r.subcategory))];
+    pdf.text(`• 음식점 유형: ${subcategories.join(', ')}`, 25, yPos);
+    yPos += 10;
+    
+    const emds = [...new Set(allRestaurants.map(r => r.emd))];
+    pdf.text(`• 분석 지역: ${emds.join(', ')}`, 25, yPos);
+    yPos += 20;
+    
+    // Instructions
+    pdf.setFontSize(16);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('사용 방법', 20, yPos);
+    yPos += 15;
+    
+    pdf.setFontSize(10);
+    pdf.setFont(undefined, 'normal');
+    const instructions = [
+        '• 지도 분석: 점을 클릭하면 가게 상세 정보 확인 가능',
+        '• 지역 비교: 변수 추가/제거로 맞춤 분석',
+        '• 음식점 유형 분석: 유형별 차별화 요소 분석',
+        '• 전략 지도: 점 클릭으로 가게 비교 분석',
+        '• 모든 차트는 데이터 범위에 맞춰 자동 조정됨'
+    ];
+    
+    instructions.forEach(instruction => {
+        pdf.text(instruction, 25, yPos);
+        yPos += 8;
+    });
 }
 
 // ==================== APPLICATION STARTUP ====================
