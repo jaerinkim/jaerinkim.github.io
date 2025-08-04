@@ -341,6 +341,24 @@ async function loadAllData() {
         if (jsonlText && csvText && jsonlText.trim()) {
             allRestaurants = parseRealData(jsonlText, csvText);
             console.log('Loaded real data:', allRestaurants.length, 'restaurants');
+            
+            // Debug: Check taste_spiciness scores across all restaurants
+            const tasteSpiciness = allRestaurants.map(r => ({
+                name: r.name,
+                score: getScoreValue(r, 'taste_spiciness'),
+                confidence: r.avg_confidence
+            })).filter(r => r.confidence >= 70);
+            
+            console.log(`DEBUG: taste_spiciness scores for ${tasteSpiciness.length} restaurants with confidence >=70:`);
+            console.log(`- Score distribution:`, {
+                'zero': tasteSpiciness.filter(r => r.score === 0).length,
+                '1-20': tasteSpiciness.filter(r => r.score > 0 && r.score <= 20).length,
+                '21-40': tasteSpiciness.filter(r => r.score > 20 && r.score <= 40).length,
+                '41-60': tasteSpiciness.filter(r => r.score > 40 && r.score <= 60).length,
+                '61+': tasteSpiciness.filter(r => r.score > 60).length
+            });
+            console.log(`- Sample high scorers:`, tasteSpiciness.filter(r => r.score > 40).slice(0, 5));
+            console.log(`- Sample low scorers:`, tasteSpiciness.filter(r => r.score > 0 && r.score <= 20).slice(0, 5));
         } else {
             console.log('Using mock data due to CORS or missing files');
             allRestaurants = generateMockData();
@@ -386,6 +404,19 @@ function parseRealData(jsonlText, csvText) {
                 franchise: detectFranchise(key),
             };
             restaurant.avg_confidence = getAverageConfidence(restaurant);
+            
+            // Debug: Check data structure for first few restaurants
+            if (Math.random() < 0.05) {
+                console.log(`DEBUG: Restaurant data structure for ${restaurant.name}:`, {
+                    hasUniversalScores: !!restaurant.universal_scores,
+                    hasSubspaceScores: !!restaurant.subspace_scores,
+                    universalKeys: restaurant.universal_scores ? Object.keys(restaurant.universal_scores) : [],
+                    subspaceKeys: restaurant.subspace_scores ? Object.keys(restaurant.subspace_scores) : [],
+                    hasTasteSpiciness: !!(restaurant.universal_scores?.taste_spiciness || restaurant.subspace_scores?.['Food & Beverage Taste']?.taste_spiciness),
+                    sampleTasteData: restaurant.universal_scores?.taste_spiciness || restaurant.subspace_scores?.['Food & Beverage Taste']?.taste_spiciness
+                });
+            }
+            
             return restaurant;
         } catch(e) {
             console.error("Error parsing line:", e);
@@ -541,11 +572,34 @@ function getAverageConfidence(restaurant) {
 }
 
 function getScoreValue(restaurant, variable) {
-    const scoreData = (restaurant.universal_scores && restaurant.universal_scores[variable]) || 
-                      (restaurant.subspace_scores && restaurant.subspace_scores['Food & Beverage Taste'] && restaurant.subspace_scores['Food & Beverage Taste'][variable]);
+    const universalScore = restaurant.universal_scores && restaurant.universal_scores[variable];
+    const subspaceScore = restaurant.subspace_scores && restaurant.subspace_scores['Food & Beverage Taste'] && restaurant.subspace_scores['Food & Beverage Taste'][variable];
+    const scoreData = universalScore || subspaceScore;
 
-    if (!scoreData || !scoreData.components || scoreData.components.length === 0) return 0;
-    return scoreData.components.reduce((sum, c) => sum + (c.point_score * c.weight), 0);
+    if (!scoreData || !scoreData.components || scoreData.components.length === 0) {
+        // Only log for taste_spiciness to avoid spam
+        if (variable === 'taste_spiciness' && Math.random() < 0.1) {
+            console.log(`DEBUG: No score data for ${restaurant.name} (${variable}):`, {
+                hasUniversal: !!restaurant.universal_scores,
+                hasSubspace: !!restaurant.subspace_scores,
+                hasTargetVariable: !!(universalScore || subspaceScore)
+            });
+        }
+        return 0;
+    }
+    
+    const calculatedScore = scoreData.components.reduce((sum, c) => sum + (c.point_score * c.weight), 0);
+    
+    // Debug logging for taste_spiciness
+    if (variable === 'taste_spiciness' && Math.random() < 0.1) {
+        console.log(`DEBUG: Score calculation for ${restaurant.name}:`, {
+            variable,
+            components: scoreData.components,
+            calculatedScore: calculatedScore.toFixed(1)
+        });
+    }
+    
+    return calculatedScore;
 }
 
 function calculateAllStats() {
@@ -683,6 +737,9 @@ function renderMapPage() {
                 </select>
                 <button id="autoCycleBtn" onclick="toggleAutoCycle()" class="btn btn-primary" style="padding: 0.8rem; min-width: 100px; font-size: 0.9rem;">
                     ▶️ 자동
+                </button>
+                <button onclick="debugSpicyData()" class="btn btn-secondary" style="padding: 0.8rem; min-width: 80px; font-size: 0.9rem;">
+                    🌶️ 디버그
                 </button>
             </div>
         </div>
@@ -861,6 +918,8 @@ function updateHeatmap() {
     const variable = document.getElementById('heatmapVariable')?.value || 'price_level';
     const category = document.getElementById('mapCategoryFilter')?.value || 'all';
     
+    console.log(`DEBUG: updateHeatmap called with variable='${variable}' (${variableLabels[variable]}) and category='${category}'`);
+    
     // Create a comprehensive kernel density grid even where no restaurants exist
     const gridData = generateKernelDensityGrid(variable, category);
     
@@ -871,11 +930,15 @@ function updateHeatmap() {
         const maxVal = Math.max(...values);
         const avgVal = values.reduce((a,b) => a+b, 0) / values.length;
         
-        console.log(`Final heatmap distribution: min=${minVal.toFixed(3)}, max=${maxVal.toFixed(3)}, avg=${avgVal.toFixed(3)}`);
+        console.log(`DEBUG: Final heatmap distribution for ${variable}:`);
+        console.log(`- Normalized values: min=${minVal.toFixed(3)}, max=${maxVal.toFixed(3)}, avg=${avgVal.toFixed(3)}`);
+        console.log(`- Sample normalized values:`, values.slice(0, 10).map(v => v.toFixed(3)));
         
         // Use actual data range for proper scaling
         const actualRange = maxVal - minVal;
         const normalizedMax = actualRange > 0.1 ? 1.0 : Math.max(maxVal, 0.6); // Ensure visible range
+        
+        console.log(`DEBUG: Heatmap scaling: actualRange=${actualRange.toFixed(3)}, normalizedMax=${normalizedMax.toFixed(3)}`);
         
         heatLayer = L.heatLayer(gridData, {
             radius: 25,      // Smaller radius for less smoothing
@@ -884,15 +947,14 @@ function updateHeatmap() {
             minOpacity: 0.3, // Lower minimum for better contrast
             max: normalizedMax, // Use actual max or reasonable default
             gradient: {
-                0.0: 'rgba(0,0,255,0.7)',        // Pure blue for lowest values
-                0.15: 'rgba(0,100,255,0.75)',    // Blue
-                0.3: 'rgba(0,200,255,0.8)',     // Light blue
-                0.45: 'rgba(0,255,150,0.85)',    // Blue-green
-                0.6: 'rgba(150,255,50,0.9)',    // Green-yellow
-                0.75: 'rgba(255,200,0,0.9)',     // Yellow
-                0.85: 'rgba(255,100,0,0.95)',    // Orange
-                0.95: 'rgba(255,50,0,0.95)',     // Red-orange  
-                1.0: 'rgba(255,0,0,1.0)'         // Pure red for highest values
+                0.0: 'rgba(30,60,255,0.8)',      // Deep blue for lowest values
+                0.1: 'rgba(0,120,255,0.8)',      // Medium blue
+                0.25: 'rgba(0,255,255,0.8)',     // Cyan
+                0.4: 'rgba(100,255,100,0.85)',   // Light green
+                0.55: 'rgba(255,255,0,0.9)',     // Yellow 
+                0.7: 'rgba(255,150,0,0.9)',      // Orange
+                0.85: 'rgba(255,50,0,0.95)',     // Red-orange
+                1.0: 'rgba(200,0,0,1.0)'         // Deep red for highest values
             }
         }).addTo(map);
         
@@ -905,16 +967,36 @@ function generateKernelDensityGrid(variable, category) {
         return (r.avg_confidence >= 70) && (category === 'all' || r.subcategory === category);
     });
     
-    if (filteredRestaurants.length === 0) return [];
+    console.log(`DEBUG: Filtering for ${variable} with confidence >=70 and category '${category}'`);
+    console.log(`DEBUG: Found ${filteredRestaurants.length} restaurants after filtering from ${allRestaurants.length} total`);
+    
+    if (filteredRestaurants.length === 0) {
+        console.warn(`No restaurants found after filtering for ${variable}`);
+        return [];
+    }
     
     // Calculate actual score range for proper color scaling
-    const scores = filteredRestaurants.map(r => getScoreValue(r, variable));
+    const scores = filteredRestaurants.map(r => {
+        const score = getScoreValue(r, variable);
+        return score;
+    });
+    
+    const validScores = scores.filter(s => s > 0);
     const minScore = Math.min(...scores);
     const maxScore = Math.max(...scores);
     const scoreRange = maxScore - minScore;
     
-    console.log(`Heatmap for ${variable}: min=${minScore.toFixed(1)}, max=${maxScore.toFixed(1)}, range=${scoreRange.toFixed(1)}`);
-    console.log(`Sample scores:`, scores.slice(0, 5).map(s => s.toFixed(1)));
+    console.log(`DEBUG: Heatmap for ${variable}:`);
+    console.log(`- Total scores: ${scores.length}, Valid (>0): ${validScores.length}`);
+    console.log(`- Min: ${minScore.toFixed(1)}, Max: ${maxScore.toFixed(1)}, Range: ${scoreRange.toFixed(1)}`);
+    console.log(`- Sample scores:`, scores.slice(0, 10).map(s => s.toFixed(1)));
+    console.log(`- Score distribution:`, {
+        'zero': scores.filter(s => s === 0).length,
+        '1-20': scores.filter(s => s > 0 && s <= 20).length,
+        '21-40': scores.filter(s => s > 20 && s <= 40).length,
+        '41-60': scores.filter(s => s > 40 && s <= 60).length,
+        '61+': scores.filter(s => s > 60).length
+    });
     
     if (scoreRange < 5) {
         console.warn(`Low score variance (${scoreRange.toFixed(1)}) - heatmap may not show clear differences`);
@@ -938,11 +1020,24 @@ function generateKernelDensityGrid(variable, category) {
             // Calculate interpolated value using inverse distance weighting
             let interpolatedScore = calculateInterpolatedValue(lat, lng, filteredRestaurants, variable, bandwidth);
             
-            // Normalize based on actual data range
-            let normalizedScore = scoreRange > 0 ? (interpolatedScore - minScore) / scoreRange : 0.5;
+            // Normalize based on actual data range with better handling
+            let normalizedScore;
+            if (scoreRange > 1) {
+                // Use standard normalization for meaningful ranges
+                normalizedScore = (interpolatedScore - minScore) / scoreRange;
+            } else {
+                // For small ranges, use a different approach to ensure visibility
+                if (interpolatedScore > minScore + scoreRange * 0.8) {
+                    normalizedScore = 0.8 + (interpolatedScore - (minScore + scoreRange * 0.8)) / (scoreRange * 0.2) * 0.2;
+                } else if (interpolatedScore > minScore + scoreRange * 0.5) {
+                    normalizedScore = 0.5 + (interpolatedScore - (minScore + scoreRange * 0.5)) / (scoreRange * 0.3) * 0.3;
+                } else {
+                    normalizedScore = (interpolatedScore - minScore) / (scoreRange || 1) * 0.5;
+                }
+            }
             
-            // Ensure values are between 0 and 1
-            normalizedScore = Math.max(0, Math.min(1, normalizedScore));
+            // Ensure values are between 0 and 1, but allow more variation
+            normalizedScore = Math.max(0.05, Math.min(0.95, normalizedScore));
             
             gridData.push([lat, lng, normalizedScore]);
         }
@@ -956,6 +1051,7 @@ function generateKernelDensityGrid(variable, category) {
 function calculateInterpolatedValue(lat, lng, restaurants, variable, bandwidth) {
     let weightedSum = 0;
     let totalWeight = 0;
+    const nearbyScores = [];
     
     restaurants.forEach(r => {
         const distance = Math.sqrt(Math.pow(lat - r.lat, 2) + Math.pow(lng - r.lng, 2));
@@ -964,11 +1060,27 @@ function calculateInterpolatedValue(lat, lng, restaurants, variable, bandwidth) 
         const weight = distance < 0.001 ? 1000 : 1 / (distance + 0.001);
         const restaurantScore = getScoreValue(r, variable);
         
+        // Collect nearby scores for debugging
+        if (distance < 0.02 && variable === 'taste_spiciness') {
+            nearbyScores.push({name: r.name, score: restaurantScore, distance: distance.toFixed(4)});
+        }
+        
         weightedSum += weight * restaurantScore;
         totalWeight += weight;
     });
     
-    return totalWeight > 0 ? weightedSum / totalWeight : 0;
+    const interpolatedValue = totalWeight > 0 ? weightedSum / totalWeight : 0;
+    
+    // Debug: Log interpolation details for some grid points when processing taste_spiciness
+    if (variable === 'taste_spiciness' && Math.random() < 0.001) {
+        console.log(`DEBUG: Interpolation at (${lat.toFixed(4)}, ${lng.toFixed(4)}):`, {
+            nearbyScores: nearbyScores.slice(0, 3),
+            interpolatedValue: interpolatedValue.toFixed(2),
+            totalWeight: totalWeight.toFixed(2)
+        });
+    }
+    
+    return interpolatedValue;
 }
 
 function gaussianKernel(distance, bandwidth) {
@@ -2261,6 +2373,29 @@ function addCoverPage(pdf) {
         pdf.text(instruction, 25, yPos);
         yPos += 8;
     });
+}
+
+function debugSpicyData() {
+    console.log('=== SPICY DATA DEBUG ===');
+    
+    const spicyRestaurants = allRestaurants.filter(r => {
+        const score = getScoreValue(r, 'taste_spiciness');
+        return r.avg_confidence >= 70 && score > 0;
+    });
+    
+    console.log(`Found ${spicyRestaurants.length} restaurants with spicy scores >0 and confidence >=70`);
+    
+    spicyRestaurants.sort((a, b) => getScoreValue(b, 'taste_spiciness') - getScoreValue(a, 'taste_spiciness'));
+    
+    console.log('Top 10 spiciest restaurants:');
+    spicyRestaurants.slice(0, 10).forEach(r => {
+        const score = getScoreValue(r, 'taste_spiciness');
+        console.log(`- ${r.name}: ${score.toFixed(1)} points (confidence: ${r.avg_confidence.toFixed(0)}%)`);
+    });
+    
+    // Force a heatmap update with detailed logging
+    console.log('Forcing heatmap update...');
+    updateMapVisualization();
 }
 
 // ==================== APPLICATION STARTUP ====================
