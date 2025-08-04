@@ -58,9 +58,12 @@
         .shop-marker { background: var(--white); border: 3px solid var(--primary); border-radius: 50%; width: 16px; height: 16px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
         .shop-marker:hover { transform: scale(1.5); border-color: var(--secondary); z-index: 1000 !important; }
         .shop-marker.deviation { border-color: var(--danger); background: #ffebee; }
-        .shop-tooltip { background: rgba(255,255,255,0.95); padding: 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 320px; font-size: 0.9rem; border: 1px solid var(--gray); }
-        .shop-tooltip h4 { color: var(--primary); margin-bottom: 0.5rem; font-weight: 600; }
-        .shop-tooltip p { color: #666; line-height: 1.5; }
+        .shop-tooltip { background: rgba(255,255,255,0.98); padding: 1.2rem; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); max-width: 350px; font-size: 0.9rem; border: 2px solid var(--primary); }
+        .shop-tooltip h4 { color: var(--primary); margin-bottom: 0.8rem; font-weight: 800; font-size: 1.1rem; }
+        .shop-tooltip p { color: #666; line-height: 1.5; margin-bottom: 0.5rem; }
+        .shop-tooltip .variable-score { color: var(--primary); font-weight: 800; font-size: 1rem; }
+        .shop-tooltip .components { background: #f8f9fa; padding: 0.8rem; border-radius: 8px; margin: 0.5rem 0; }
+        .shop-tooltip .component-item { font-size: 0.8rem; color: #555; margin: 0.3rem 0; }
 
         /* Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; }
@@ -718,8 +721,13 @@ function renderMapPage() {
 
 function updateMapVisualization() {
     // Show both markers and heatmap simultaneously
+    // Update markers first to reflect current variable
     renderMapMarkers();
     updateHeatmap();
+    
+    // Log current variable for debugging
+    const currentVar = document.getElementById('heatmapVariable')?.value;
+    console.log(`Map visualization updated for variable: ${currentVar} (${variableLabels[currentVar]})`);
 }
 
 function setupMapControls() {
@@ -774,8 +782,9 @@ function startAutoCycle() {
         currentVariableIndex = (currentVariableIndex + 1) % variableKeys.length;
         const newVariable = variableKeys[currentVariableIndex];
         
+        console.log(`Auto-cycling to: ${variableLabels[newVariable]}`);
         document.getElementById('heatmapVariable').value = newVariable;
-        updateMapVisualization();
+        updateMapVisualization(); // This will update both heatmap and markers
     }, 5000);
 }
 
@@ -802,17 +811,41 @@ function renderMapMarkers() {
         ? [...filteredRestaurants].sort(() => 0.5 - Math.random()).slice(0, sampleSize)
         : filteredRestaurants;
 
+    const currentVariable = document.getElementById('heatmapVariable')?.value || 'price_level';
+
     sampled.forEach(r => {
         const markerIcon = L.divIcon({
             className: `shop-marker ${isDeviation(r) ? 'deviation' : ''}`,
             iconSize: [16, 16]
         });
+        
+        // Get variable components for hover display
+        const variableScore = getScoreValue(r, currentVariable);
+        const variableData = r.universal_scores?.[currentVariable] || r.subspace_scores?.['Food & Beverage Taste']?.[currentVariable];
+        const components = variableData?.components || [];
+        
+        let tooltipContent = `<h4>${r.name}</h4>`;
+        tooltipContent += `<p class=\"variable-score\">${variableLabels[currentVariable]}: ${variableScore.toFixed(1)}점</p>`;
+        
+        if (components.length > 0) {
+            tooltipContent += `<div class="components">`;
+            tooltipContent += `<strong style="color: var(--secondary); font-size: 0.9rem;">📊 구성요소 분석</strong><br/>`;
+            components.forEach(c => {
+                const percentage = (c.weight * 100).toFixed(0);
+                tooltipContent += `<div class="component-item">• ${c.component_name}: <span style="color: var(--primary); font-weight: 700;">${c.point_score.toFixed(1)}점</span> <span style="color: #888;">(${percentage}%)</span></div>`;
+            });
+            tooltipContent += `</div>`;
+        }
+        
+        tooltipContent += `<p style="margin-top: 0.8rem; font-size: 0.8rem; color: #666; font-style: italic;">${r.latent_summary || '상세 정보 없음'}</p>`;
+        
         const marker = L.marker([r.lat, r.lng], { icon: markerIcon })
-            .bindTooltip(`<h4>${r.name}</h4><p>${r.latent_summary || '상세 정보 없음'}</p>`, {
+            .bindTooltip(tooltipContent, {
                 className: 'shop-tooltip',
                 offset: [0, -10],
                 permanent: false,
-                sticky: true
+                sticky: true,
+                maxWidth: 350
             })
             .on('click', () => showShopDetailModal(r));
         markerLayer.addLayer(marker);
@@ -832,31 +865,38 @@ function updateHeatmap() {
     const gridData = generateKernelDensityGrid(variable, category);
     
     if (gridData.length > 0) {
-        // Calculate normalized value distribution
+        // Calculate actual value distribution for verification
         const values = gridData.map(point => point[2]);
         const minVal = Math.min(...values);
         const maxVal = Math.max(...values);
+        const avgVal = values.reduce((a,b) => a+b, 0) / values.length;
         
-        console.log(`Final heatmap values: min=${minVal.toFixed(3)}, max=${maxVal.toFixed(3)}`);
+        console.log(`Final heatmap distribution: min=${minVal.toFixed(3)}, max=${maxVal.toFixed(3)}, avg=${avgVal.toFixed(3)}`);
+        
+        // Use actual data range for proper scaling
+        const actualRange = maxVal - minVal;
+        const normalizedMax = actualRange > 0.1 ? 1.0 : Math.max(maxVal, 0.6); // Ensure visible range
         
         heatLayer = L.heatLayer(gridData, {
-            radius: 45,      // Larger radius for better coverage
-            blur: 35,        // More blur for smoother appearance
+            radius: 25,      // Smaller radius for less smoothing
+            blur: 15,        // Less blur to preserve value differences
             maxZoom: 17,
-            minOpacity: 0.5, // Better base visibility
-            max: 1.0,        // Always use full scale
+            minOpacity: 0.3, // Lower minimum for better contrast
+            max: normalizedMax, // Use actual max or reasonable default
             gradient: {
-                0.0: 'rgba(30,60,255,0.8)',     // Deep blue
-                0.1: 'rgba(0,120,255,0.8)',     // Medium blue  
-                0.25: 'rgba(0,180,255,0.85)',   // Light blue
-                0.4: 'rgba(0,255,200,0.85)',    // Cyan
-                0.55: 'rgba(100,255,100,0.9)',  // Green
-                0.7: 'rgba(255,255,0,0.9)',     // Yellow
-                0.8: 'rgba(255,150,0,0.95)',    // Orange
-                0.9: 'rgba(255,80,0,0.95)',     // Red-orange
-                1.0: 'rgba(255,0,0,1.0)'        // Deep red
+                0.0: 'rgba(0,0,255,0.7)',        // Pure blue for lowest values
+                0.15: 'rgba(0,100,255,0.75)',    // Blue
+                0.3: 'rgba(0,200,255,0.8)',     // Light blue
+                0.45: 'rgba(0,255,150,0.85)',    // Blue-green
+                0.6: 'rgba(150,255,50,0.9)',    // Green-yellow
+                0.75: 'rgba(255,200,0,0.9)',     // Yellow
+                0.85: 'rgba(255,100,0,0.95)',    // Orange
+                0.95: 'rgba(255,50,0,0.95)',     // Red-orange  
+                1.0: 'rgba(255,0,0,1.0)'         // Pure red for highest values
             }
         }).addTo(map);
+        
+        console.log(`Heatmap configured with radius=25, blur=15, max=${normalizedMax}`);
     }
 }
 
@@ -871,77 +911,64 @@ function generateKernelDensityGrid(variable, category) {
     const scores = filteredRestaurants.map(r => getScoreValue(r, variable));
     const minScore = Math.min(...scores);
     const maxScore = Math.max(...scores);
-    const avgScore = scores.reduce((a,b) => a+b, 0) / scores.length;
     const scoreRange = maxScore - minScore;
     
-    console.log(`Heatmap for ${variable}: min=${minScore.toFixed(1)}, max=${maxScore.toFixed(1)}, avg=${avgScore.toFixed(1)}, range=${scoreRange.toFixed(1)}`);
+    console.log(`Heatmap for ${variable}: min=${minScore.toFixed(1)}, max=${maxScore.toFixed(1)}, range=${scoreRange.toFixed(1)}`);
+    console.log(`Sample scores:`, scores.slice(0, 5).map(s => s.toFixed(1)));
+    
+    if (scoreRange < 5) {
+        console.warn(`Low score variance (${scoreRange.toFixed(1)}) - heatmap may not show clear differences`);
+    }
     
     const gridData = [];
-    const gridSize = 0.008; // Slightly larger grid for better performance
-    const bandwidth = 0.02; // Larger bandwidth for smoother gradation
+    const gridSize = 0.005; // Smaller grid for more precision
+    const bandwidth = 0.01; // Smaller bandwidth for less smoothing
     
-    // Create circular/hexagonal coverage area instead of rectangle
+    // Create circular coverage area
     const centerLat = GwangmyeongCenter[0];
     const centerLng = GwangmyeongCenter[1];
-    const radius = 0.15; // Coverage radius
+    const radius = 0.15;
     
-    const allGridScores = [];
-    
-    // First pass: calculate all scores
+    // Generate grid points with proper interpolation
     for (let lat = AreaBounds.south; lat <= AreaBounds.north; lat += gridSize) {
         for (let lng = AreaBounds.west; lng <= AreaBounds.east; lng += gridSize) {
             const distFromCenter = Math.sqrt(Math.pow(lat - centerLat, 2) + Math.pow(lng - centerLng, 2));
             if (distFromCenter > radius) continue;
             
-            let weightedScore = 0;
-            let totalWeight = 0;
+            // Calculate interpolated value using inverse distance weighting
+            let interpolatedScore = calculateInterpolatedValue(lat, lng, filteredRestaurants, variable, bandwidth);
             
-            filteredRestaurants.forEach(r => {
-                const distance = Math.sqrt(Math.pow(lat - r.lat, 2) + Math.pow(lng - r.lng, 2));
-                const kernelValue = gaussianKernel(distance, bandwidth);
-                const restaurantScore = getScoreValue(r, variable);
-                
-                weightedScore += kernelValue * restaurantScore;
-                totalWeight += kernelValue;
-            });
+            // Normalize based on actual data range
+            let normalizedScore = scoreRange > 0 ? (interpolatedScore - minScore) / scoreRange : 0.5;
             
-            const finalScore = totalWeight > 0.001 ? weightedScore / totalWeight : avgScore;
-            allGridScores.push({lat, lng, score: finalScore, distFromCenter});
+            // Ensure values are between 0 and 1
+            normalizedScore = Math.max(0, Math.min(1, normalizedScore));
+            
+            gridData.push([lat, lng, normalizedScore]);
         }
     }
     
-    // Calculate grid-level statistics for better normalization
-    const gridScores = allGridScores.map(g => g.score);
-    const gridMin = Math.min(...gridScores);
-    const gridMax = Math.max(...gridScores);
-    const gridRange = gridMax - gridMin;
+    console.log(`Generated ${gridData.length} grid points for variable-based heatmap`);
+    return gridData;
+}
+
+// Calculate interpolated value using inverse distance weighting
+function calculateInterpolatedValue(lat, lng, restaurants, variable, bandwidth) {
+    let weightedSum = 0;
+    let totalWeight = 0;
     
-    console.log(`Grid normalization: min=${gridMin.toFixed(1)}, max=${gridMax.toFixed(1)}, range=${gridRange.toFixed(1)}`);
-    
-    // Second pass: normalize and create final grid data
-    allGridScores.forEach(({lat, lng, score, distFromCenter}) => {
-        // Use robust normalization with percentile-based scaling
-        let normalizedScore = 0.5; // Default to middle
+    restaurants.forEach(r => {
+        const distance = Math.sqrt(Math.pow(lat - r.lat, 2) + Math.pow(lng - r.lng, 2));
         
-        if (gridRange > 1) { // Only normalize if there's meaningful variation
-            normalizedScore = (score - gridMin) / gridRange;
-            
-            // Apply sigmoid transformation for better color distribution
-            normalizedScore = 1 / (1 + Math.exp(-6 * (normalizedScore - 0.5)));
-        }
+        // Use inverse distance weighting with minimum distance threshold
+        const weight = distance < 0.001 ? 1000 : 1 / (distance + 0.001);
+        const restaurantScore = getScoreValue(r, variable);
         
-        // Add falloff towards edges for more natural appearance
-        const edgeFalloff = Math.max(0.3, 1 - (distFromCenter / radius));
-        const adjustedScore = normalizedScore * edgeFalloff;
-        
-        // Ensure minimum visibility and add some variance
-        const finalValue = Math.max(0.1, Math.min(0.95, adjustedScore));
-        
-        gridData.push([lat, lng, finalValue]);
+        weightedSum += weight * restaurantScore;
+        totalWeight += weight;
     });
     
-    console.log(`Generated ${gridData.length} grid points for heatmap`);
-    return gridData;
+    return totalWeight > 0 ? weightedSum / totalWeight : 0;
 }
 
 function gaussianKernel(distance, bandwidth) {
