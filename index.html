@@ -159,7 +159,7 @@
                 <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/>
             </path>
         </svg>
-        <p>데이터를 불러오는 중입니다...</p>
+        <p>Loading data...</p>
     </div>
 
     <div class="main-container">
@@ -2166,7 +2166,7 @@ function variance(arr) {
 // ==================== PDF DOWNLOAD ====================
 async function downloadPDF() {
     loadingOverlay.style.display = 'flex';
-    loadingOverlay.querySelector('p').textContent = 'PDF 생성 중...';
+            loadingOverlay.querySelector('p').textContent = 'Generating PDF...';
     
     try {
         const { jsPDF } = window.jspdf;
@@ -2177,15 +2177,15 @@ async function downloadPDF() {
         
         const pagesToCapture = ['map-page', 'comparison-page', 'franchise-page', 'typemap-page', 'strategymap-page'];
         const pageDescriptions = {
-            'map-page': '지도 분석: 음식점 위치와 히트맵을 통한 상권 분석. 점을 클릭하면 상세 정보를 확인할 수 있습니다.',
-            'comparison-page': '지역 특성 비교: 두 지역의 주요 지표를 비교 분석합니다. 변수를 추가/제거하여 맞춤 분석이 가능합니다.',
-            'franchise-page': '음식점 유형 분석: 선택된 음식점 유형의 차별화된 매장들을 분석합니다.',
-            'typemap-page': '음식점 유형 지도: 각 음식점 유형의 특성을 2차원 지도로 시각화합니다.',
-            'strategymap-page': '가게별 전략 지도: 선택된 음식점 유형의 가게들을 변수별로 시각화하여 포지셔닝을 분석합니다.'
+            'map-page': 'Map Analysis: Restaurant locations and heatmap analysis. Click points to view detailed information.',
+            'comparison-page': 'Regional Comparison: Compare key metrics between different areas. Add/remove variables for custom analysis.',
+            'franchise-page': 'Restaurant Type Analysis: Analyze differentiated stores in selected restaurant categories.',
+            'typemap-page': 'Type Distribution Map: Visualize characteristics of each restaurant type in a 2D map.',
+            'strategymap-page': 'Strategy Map: Visualize restaurants by variables to analyze positioning and competitive landscape.'
         };
         
         for(let i = 0; i < pagesToCapture.length; i++) {
-            loadingOverlay.querySelector('p').textContent = `PDF 생성 중... (${i+2}/${pagesToCapture.length+1})`;
+            loadingOverlay.querySelector('p').textContent = `Generating PDF... (${i+2}/${pagesToCapture.length+1})`;
             
             pdf.addPage();
             
@@ -2218,83 +2218,96 @@ async function downloadPDF() {
             pdf.addImage(imgData, 'PNG', 20, 50, pdfWidth, Math.min(pdfHeight, 230));
         }
         
-        const currentDate = new Date().toLocaleDateString('ko-KR');
-        pdf.save(`상권분석_리포트_${currentDate}.pdf`);
+        const currentDate = new Date().toLocaleDateString('en-US').replace(/\//g, '-');
+        pdf.save(`Sangkwon_Analysis_Report_${currentDate}.pdf`);
         
     } catch(e) {
         console.error("PDF generation failed:", e);
-        alert("PDF 생성에 실패했습니다. 다시 시도해주세요.");
+        alert("PDF generation failed. Please try again.");
     } finally {
         loadingOverlay.style.display = 'none';
-        loadingOverlay.querySelector('p').textContent = '데이터를 불러오는 중입니다...';
+        loadingOverlay.querySelector('p').textContent = 'Loading data...';
         navigateTo('map-page');
     }
 }
 
 function addCoverPage(pdf) {
-    // Cover page with current selections
+    // Cover page with current selections (English text to avoid encoding issues)
     pdf.setFontSize(24);
     pdf.setFont(undefined, 'bold');
-    pdf.text('상권.shop 분석 리포트', 20, 30);
+    pdf.text('Sangkwon.shop Analysis Report', 20, 30);
     
     pdf.setFontSize(14);
     pdf.setFont(undefined, 'normal');
-    pdf.text(`생성일시: ${new Date().toLocaleDateString('ko-KR')} ${new Date().toLocaleTimeString('ko-KR')}`, 20, 45);
+    pdf.text(`Generated: ${new Date().toLocaleDateString('en-US')} ${new Date().toLocaleTimeString('en-US')}`, 20, 45);
     
     // Current selections summary
     pdf.setFontSize(16);
     pdf.setFont(undefined, 'bold');
-    pdf.text('현재 선택 사항', 20, 65);
+    pdf.text('Current Settings', 20, 65);
     
     pdf.setFontSize(12);
     pdf.setFont(undefined, 'normal');
     let yPos = 80;
     
     // Get current selections from various pages
-    const heatmapVar = document.getElementById('heatmapVariable')?.value || '설정되지 않음';
-    const categoryFilter = document.getElementById('mapCategoryFilter')?.value || '전체';
-    const deviationMode = document.getElementById('deviationToggle')?.checked ? '활성화' : '비활성화';
+    const heatmapVar = document.getElementById('heatmapVariable')?.value || 'not set';
+    const categoryFilter = document.getElementById('mapCategoryFilter')?.value || 'all';
+    const deviationMode = document.getElementById('deviationToggle')?.checked ? 'enabled' : 'disabled';
     
-    pdf.text(`• 히트맵 변수: ${variableLabels[heatmapVar] || heatmapVar}`, 25, yPos);
+    // Create English variable names mapping
+    const englishVariableLabels = {
+        'price_level': 'Price Level',
+        'price_value_for_money': 'Value for Money',
+        'atmosphere_energy_level': 'Energy Level',
+        'atmosphere_formality': 'Formality',
+        'cleanliness_and_hygiene': 'Cleanliness',
+        'service_staff_friendliness': 'Staff Friendliness',
+        'taste_spiciness': 'Spiciness',
+        'taste_sweetness': 'Sweetness',
+        'offering_quality_core': 'Core Quality'
+    };
+    
+    pdf.text(`• Heatmap Variable: ${englishVariableLabels[heatmapVar] || variableLabels[heatmapVar] || heatmapVar}`, 25, yPos);
     yPos += 10;
-    pdf.text(`• 업종 필터: ${categoryFilter}`, 25, yPos);
+    pdf.text(`• Category Filter: ${categoryFilter}`, 25, yPos);
     yPos += 10;
-    pdf.text(`• 틈새 시장 표시: ${deviationMode}`, 25, yPos);
+    pdf.text(`• Niche Market Display: ${deviationMode}`, 25, yPos);
     yPos += 15;
     
     // Summary statistics
     pdf.setFontSize(16);
     pdf.setFont(undefined, 'bold');
-    pdf.text('데이터 요약', 20, yPos);
+    pdf.text('Data Summary', 20, yPos);
     yPos += 15;
     
     pdf.setFontSize(12);
     pdf.setFont(undefined, 'normal');
-    pdf.text(`• 전체 음식점 수: ${allRestaurants.length}개`, 25, yPos);
+    pdf.text(`• Total Restaurants: ${allRestaurants.length}`, 25, yPos);
     yPos += 10;
     
     const subcategories = [...new Set(allRestaurants.map(r => r.subcategory))];
-    pdf.text(`• 음식점 유형: ${subcategories.join(', ')}`, 25, yPos);
+    pdf.text(`• Restaurant Types: ${subcategories.slice(0, 8).join(', ')}${subcategories.length > 8 ? '...' : ''}`, 25, yPos);
     yPos += 10;
     
     const emds = [...new Set(allRestaurants.map(r => r.emd))];
-    pdf.text(`• 분석 지역: ${emds.join(', ')}`, 25, yPos);
+    pdf.text(`• Analysis Areas: ${emds.join(', ')}`, 25, yPos);
     yPos += 20;
     
     // Instructions
     pdf.setFontSize(16);
     pdf.setFont(undefined, 'bold');
-    pdf.text('사용 방법', 20, yPos);
+    pdf.text('How to Use', 20, yPos);
     yPos += 15;
     
     pdf.setFontSize(10);
     pdf.setFont(undefined, 'normal');
     const instructions = [
-        '• 지도 분석: 점을 클릭하면 가게 상세 정보 확인 가능',
-        '• 지역 비교: 변수 추가/제거로 맞춤 분석',
-        '• 음식점 유형 분석: 유형별 차별화 요소 분석',
-        '• 전략 지도: 점 클릭으로 가게 비교 분석',
-        '• 모든 차트는 데이터 범위에 맞춰 자동 조정됨'
+        '• Map Analysis: Click points to view detailed restaurant information',
+        '• Regional Comparison: Add/remove variables for custom analysis',
+        '• Restaurant Type Analysis: Analyze differentiation factors by type',
+        '• Strategy Map: Click points to compare restaurants',
+        '• All charts automatically adjust to data ranges'
     ];
     
     instructions.forEach(instruction => {
