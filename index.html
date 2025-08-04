@@ -876,7 +876,7 @@ function updateHeatmap() {
     const variable = document.getElementById('heatmapVariable')?.value || 'price_level';
     const category = document.getElementById('mapCategoryFilter')?.value || 'all';
     
-    console.log(`🗺️ Updating heatmap: ${variableLabels[variable]} (${category} category)`);
+    console.log(`🗺️ Updating heatmap: ${variableLabels[variable]} (${category} category) | Colors: Blue=Low, Green=Average, Red=High`);
     
     // Create a comprehensive kernel density grid even where no restaurants exist
     const gridData = generateKernelDensityGrid(variable, category);
@@ -888,26 +888,32 @@ function updateHeatmap() {
         const maxVal = Math.max(...values);
         const avgVal = values.reduce((a,b) => a+b, 0) / values.length;
         
-        // Log brief heatmap statistics
-        console.log(`📊 Heatmap: ${variableLabels[variable]} | Range: ${minVal.toFixed(2)}-${maxVal.toFixed(2)} | Points: ${gridData.length}`);
+        // Log brief heatmap statistics with z-score context
+        const sampleZScores = values.slice(0, 10).map(v => ((v * 6) - 3).toFixed(1)); // Convert back to z-scores for display
+        console.log(`📊 Heatmap: ${variableLabels[variable]} | Normalized: ${minVal.toFixed(2)}-${maxVal.toFixed(2)} | Z-scores: ${sampleZScores.join(', ')}... | Points: ${gridData.length}`);
         
         // Use actual data range for proper scaling
         const actualRange = maxVal - minVal;
         const normalizedMax = actualRange > 0.1 ? 1.0 : Math.max(maxVal, 0.6); // Ensure visible range
         
         heatLayer = L.heatLayer(gridData, {
-            radius: 30,        // Larger radius for better coverage
-            blur: 20,          // More blur to eliminate hard edges
+            radius: 30,
+            blur: 20,
             maxZoom: 17,
             minOpacity: 0.3,
-            // Let leaflet auto-detect max for proper scaling
+            max: 1.0,          // FIXED max to prevent zoom-dependent color changes
             gradient: {
-                0.0: '#0033ff',    // Deep blue for lowest
-                0.25: '#00aaff',   // Light blue  
-                0.5: '#00ff55',    // Green for medium
-                0.75: '#ffff00',   // Yellow 
-                0.9: '#ff8800',    // Orange
-                1.0: '#ff0000'     // Red for highest
+                // Based on z-score interpretation:
+                // 0.0-0.3: Very low (< -1 SD) = Blue shades
+                // 0.3-0.7: Around average (±1 SD) = Green/Yellow shades  
+                // 0.7-1.0: Very high (> +1 SD) = Orange/Red shades
+                0.0: '#000080',    // Dark blue for very low (-3 SD)
+                0.17: '#0066ff',   // Blue for low (-1 SD)  
+                0.33: '#00ccff',   // Cyan for below average (-0.5 SD)
+                0.5: '#00ff00',    // Green for average (mean)
+                0.67: '#ffff00',   // Yellow for above average (+0.5 SD)
+                0.83: '#ff8800',   // Orange for high (+1 SD)
+                1.0: '#ff0000'     // Red for very high (+3 SD)
             }
         }).addTo(map);
         
@@ -925,54 +931,39 @@ function generateKernelDensityGrid(variable, category) {
         return [];
     }
     
-    // Calculate actual score range for proper color scaling
-    const scores = filteredRestaurants.map(r => getScoreValue(r, variable));
-    const validScores = scores.filter(s => s > 0);
-    const minScore = Math.min(...scores);
-    const maxScore = Math.max(...scores);
-    const scoreRange = maxScore - minScore;
+    // Calculate statistical parameters for standardization
+    const scores = filteredRestaurants.map(r => getScoreValue(r, variable)).filter(s => s > 0);
+    if (scores.length === 0) return [];
     
-    console.log(`🔢 Data: ${filteredRestaurants.length} restaurants | Score range: ${minScore.toFixed(1)}-${maxScore.toFixed(1)}`);
+    const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const variance = scores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / scores.length;
+    const standardDev = Math.sqrt(variance);
     
-    if (scoreRange < 5) {
-        console.warn(`⚠️ Low variation in ${variableLabels[variable]} scores`);
+    console.log(`📊 Statistics: ${variableLabels[variable]} | Mean: ${mean.toFixed(1)}, SD: ${standardDev.toFixed(1)}, N: ${scores.length}`);
+    console.log(`🎯 Standardization: Values will be z-score normalized (mean=0, colors fixed across zoom levels)`);
+    
+    if (standardDev < 2) {
+        console.warn(`⚠️ Low variation in ${variableLabels[variable]} (SD=${standardDev.toFixed(1)})`);
     }
     
     const gridData = [];
-    const gridSize = 0.008; // Slightly larger grid for better performance
-    const bandwidth = 0.005; // Much smaller bandwidth to preserve sharp differences
+    const gridSize = 0.008; // Grid resolution for heatmap
     
     // Generate grid points across the entire area (no circular boundary)
     for (let lat = AreaBounds.south; lat <= AreaBounds.north; lat += gridSize) {
         for (let lng = AreaBounds.west; lng <= AreaBounds.east; lng += gridSize) {
             
-            // Calculate interpolated value using inverse distance weighting
-            let interpolatedScore = calculateInterpolatedValue(lat, lng, filteredRestaurants, variable, bandwidth);
+            // Calculate interpolated value using proper spatial interpolation
+            let interpolatedScore = calculateInterpolatedValue(lat, lng, filteredRestaurants, variable);
             
-            // Fix normalization to preserve actual data variation
-            let normalizedScore;
-            if (scoreRange > 5) {
-                // Standard normalization for good ranges
-                normalizedScore = (interpolatedScore - minScore) / scoreRange;
-            } else {
-                // For compressed ranges, use actual restaurant min/max instead of interpolated values
-                const directScores = filteredRestaurants.map(r => getScoreValue(r, variable)).filter(s => s > 0);
-                if (directScores.length > 0) {
-                    const dataMin = Math.min(...directScores);
-                    const dataMax = Math.max(...directScores);
-                    const dataRange = dataMax - dataMin;
-                    if (dataRange > 0) {
-                        normalizedScore = (interpolatedScore - dataMin) / dataRange;
-                    } else {
-                        normalizedScore = 0.5;
-                    }
-                } else {
-                    normalizedScore = 0.5;
-                }
-            }
+            // Z-score normalization: (value - mean) / standardDev
+            let zScore = standardDev > 0 ? (interpolatedScore - mean) / standardDev : 0;
             
-            // Apply contrast enhancement to spread values across full 0-1 range
-            normalizedScore = Math.pow(normalizedScore, 0.7); // Gamma correction for better contrast
+            // Map z-scores to 0-1 range for heatmap colors
+            // zScore = -3: Very low (0.0) -> Dark blue
+            // zScore =  0: Average (0.5) -> Green  
+            // zScore = +3: Very high (1.0) -> Red
+            let normalizedScore = (zScore + 3) / 6;  // Maps [-3,+3] to [0,1]
             normalizedScore = Math.max(0.05, Math.min(0.95, normalizedScore));
             
             gridData.push([lat, lng, normalizedScore]);
@@ -982,41 +973,42 @@ function generateKernelDensityGrid(variable, category) {
     return gridData;
 }
 
-// Calculate interpolated value with better distance weighting to preserve variation
-function calculateInterpolatedValue(lat, lng, restaurants, variable, bandwidth) {
+// Calculate interpolated value using proper spatial interpolation
+function calculateInterpolatedValue(lat, lng, restaurants, variable) {
+    if (restaurants.length === 0) return 0;
+    
+    // Always use the nearest restaurants for interpolation (no dead zones)
+    const restaurantDistances = restaurants.map(r => {
+        const distance = Math.sqrt(Math.pow(lat - r.lat, 2) + Math.pow(lng - r.lng, 2));
+        const score = getScoreValue(r, variable);
+        return { restaurant: r, distance, score };
+    }).filter(item => item.score > 0); // Only consider restaurants with actual scores
+    
+    if (restaurantDistances.length === 0) return 0;
+    
+    // Sort by distance and take the nearest ones for interpolation
+    restaurantDistances.sort((a, b) => a.distance - b.distance);
+    
+    // Use nearest 5-8 restaurants for interpolation (or all if fewer)
+    const nearestCount = Math.min(8, restaurantDistances.length);
+    const nearestRestaurants = restaurantDistances.slice(0, nearestCount);
+    
     let weightedSum = 0;
     let totalWeight = 0;
-    const nearbyScores = [];
-    const maxInfluenceDistance = 0.02; // Only consider restaurants within 2km
     
-    restaurants.forEach(r => {
-        const distance = Math.sqrt(Math.pow(lat - r.lat, 2) + Math.pow(lng - r.lng, 2));
+    nearestRestaurants.forEach(item => {
+        const { distance, score } = item;
         
-        if (distance > maxInfluenceDistance) return; // Skip distant restaurants
+        // Inverse distance weighting - closer restaurants have more influence
+        // Use a minimum distance to avoid division by zero
+        const effectiveDistance = Math.max(distance, 0.001);
+        const weight = 1 / Math.pow(effectiveDistance, 2);
         
-        // Use more aggressive inverse distance weighting to preserve sharp differences
-        let weight;
-        if (distance < 0.0005) {
-            weight = 10000; // Very close = very high weight
-        } else if (distance < 0.002) {
-            weight = 1 / Math.pow(distance, 3); // Cubic inverse for nearby restaurants
-        } else {
-            weight = 1 / Math.pow(distance, 2); // Quadratic inverse for farther restaurants
-        }
-        
-        const restaurantScore = getScoreValue(r, variable);
-        
-
-        
-        weightedSum += weight * restaurantScore;
+        weightedSum += weight * score;
         totalWeight += weight;
     });
     
-    const interpolatedValue = totalWeight > 0 ? weightedSum / totalWeight : 0;
-    
-
-    
-    return interpolatedValue;
+    return totalWeight > 0 ? weightedSum / totalWeight : 0;
 }
 
 function gaussianKernel(distance, bandwidth) {
