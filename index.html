@@ -376,8 +376,8 @@ function parseRealData(jsonlText, csvText) {
                 key: key,
                 name: key.split(' at ')[0],
                 address: key.split(' at ')[1],
-                lat: parseFloat(extra.lat) || (GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.3),   // 3x larger area
-                lng: parseFloat(extra.lng) || (GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.3),
+                lat: parseFloat(extra['위도'] || extra.lat) || (GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.3),   // Use 위도 column
+                lng: parseFloat(extra['경도'] || extra.lng) || (GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.3),   // Use 경도 column
                 subcategory: extra.subcategory || detectSubcategory(parsed),
                 emd: extra.emd_name || getRandomEmd(),
                 franchise: detectFranchise(key),
@@ -394,16 +394,26 @@ function parseRealData(jsonlText, csvText) {
 function parseCSV(text) {
     const lines = text.trim().split('\n');
     if (lines.length < 2) return {};
-    const header = lines[0].split(',').map(h => h.trim());
+    const header = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
     const dataMap = {};
+    
+    console.log('CSV Header:', header); // Debug log
+    
     for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',');
         const entry = {};
         header.forEach((h, j) => {
             entry[h] = values[j] ? values[j].trim().replace(/"/g, '') : '';
         });
-        if (entry.key) dataMap[entry.key] = entry;
+        if (entry.key) {
+            // Ensure coordinate mapping
+            if (entry['위도']) entry.lat = entry['위도'];
+            if (entry['경도']) entry.lng = entry['경도'];
+            dataMap[entry.key] = entry;
+        }
     }
+    
+    console.log('Sample CSV entry:', Object.values(dataMap)[0]); // Debug log
     return dataMap;
 }
 
@@ -429,7 +439,7 @@ function generateMockData() {
                 franchise: franchise,
                 universal_scores: generateMockScores(),
                 subspace_scores: generateMockSubspaceScores(),
-                latent_summary: `${emd}에 위치한 ${subcategory} 전문점으로, 지역 주민들에게 사랑받는 맛집입니다. 특색 있는 메뉴와 친절한 서비스로 유명합니다.`,
+                latent_summary: generateLatentSummary(subcategory, emd),
                 metadata: { data_completeness_report: { confidence_score: 60 + Math.random() * 40 } }
             };
             restaurant.avg_confidence = getAverageConfidence(restaurant);
@@ -466,14 +476,46 @@ function generateMockSubspaceScores() {
     };
 }
 
+function generateLatentSummary(subcategory, emd) {
+    const summaryTemplates = {
+        '한식': [`${emd}에 위치한 전통 한식 전문점으로, 김치찌개와 불고기가 유명합니다. 한국의 정통 맛을 제공합니다.`,
+                `${emd}의 가정식 한식당으로, 집밥 같은 따뜻한 한식 메뉴를 선보입니다.`],
+        '중식': [`${emd}에 위치한 중식 전문점으로, 짜장면과 탕수육이 인기 메뉴입니다. 중국 전통 요리를 맛볼 수 있습니다.`,
+                `${emd}의 중국음식점으로, 차이니즈 요리와 딤섬을 제공하는 맛집입니다.`],
+        '일식': [`${emd}에 위치한 일식 전문점으로, 신선한 초밥과 라멘을 제공합니다. 일본 정통 스시와 사시미가 유명합니다.`,
+                `${emd}의 일본요리점으로, 돈카츠와 우동이 인기 메뉴인 맛집입니다.`],
+        '양식': [`${emd}에 위치한 양식 레스토랑으로, 파스타와 스테이크가 대표 메뉴입니다. 서양 요리의 정수를 보여줍니다.`,
+                `${emd}의 이탈리안 레스토랑으로, 피자와 리조또가 유명한 맛집입니다.`],
+        '카페': [`${emd}에 위치한 아늑한 카페로, 신선한 커피와 디저트를 제공합니다.`,
+                `${emd}의 분위기 좋은 카페로, 다양한 음료와 브런치를 즐길 수 있습니다.`],
+        '치킨': [`${emd}에 위치한 치킨 전문점으로, 바삭한 후라이드 치킨과 양념치킨이 유명합니다.`,
+                `${emd}의 치킨집으로, 닭강정과 각종 치킨 메뉴를 제공하는 맛집입니다.`],
+        '피자': [`${emd}에 위치한 피자 전문점으로, 다양한 토핑의 피자를 제공합니다.`,
+                `${emd}의 이탈리안 피자집으로, 수제 도우 피자가 인기인 맛집입니다.`],
+        '분식': [`${emd}에 위치한 분식점으로, 떡볶이와 순대가 대표 메뉴입니다.`,
+                `${emd}의 길거리 음식점으로, 김밥과 라면을 함께 즐길 수 있는 맛집입니다.`],
+        '간식': [`${emd}에 위치한 간식 전문점으로, 다양한 디저트와 음료를 제공합니다.`,
+                `${emd}의 디저트 카페로, 케이크와 아이스크림이 유명한 맛집입니다.`],
+        '술집': [`${emd}에 위치한 주점으로, 맥주와 안주가 맛있는 곳입니다.`,
+                `${emd}의 호프집으로, 치킨과 맥주를 즐길 수 있는 인기 술집입니다.`]
+    };
+    
+    const templates = summaryTemplates[subcategory] || summaryTemplates['한식'];
+    return templates[Math.floor(Math.random() * templates.length)];
+}
+
 function detectSubcategory(data) {
     const summary = data.latent_summary || '';
     if (summary.includes('한식') || summary.includes('김치')) return '한식';
-    if (summary.includes('중식') || summary.includes('중국')) return '중식';
-    if (summary.includes('일식') || summary.includes('초밥')) return '일식';
-    if (summary.includes('양식') || summary.includes('파스타')) return '양식';
+    if (summary.includes('중식') || summary.includes('중국') || summary.includes('차이니즈')) return '중식';
+    if (summary.includes('일식') || summary.includes('초밥') || summary.includes('스시') || summary.includes('라멘')) return '일식';
+    if (summary.includes('양식') || summary.includes('파스타') || summary.includes('스테이크')) return '양식';
     if (summary.includes('카페') || summary.includes('커피')) return '카페';
     if (summary.includes('간식') || summary.includes('디저트')) return '간식';
+    if (summary.includes('치킨') || summary.includes('닭')) return '치킨';
+    if (summary.includes('피자')) return '피자';
+    if (summary.includes('분식') || summary.includes('떡볶이')) return '분식';
+    if (summary.includes('술집') || summary.includes('맥주')) return '술집';
     return '한식';
 }
 
@@ -665,6 +707,12 @@ function renderMapPage() {
     // Initialize filteredRestaurants first, then show both markers and heatmap
     setTimeout(() => {
         applyMapFilters();
+        // Auto-start cycling by default
+        startAutoCycle();
+        const btn = document.getElementById('autoCycleBtn');
+        btn.innerHTML = '⏸️ 일시정지';
+        btn.style.background = 'linear-gradient(135deg, var(--success), #27ae60)';
+        isAutoCycling = true;
     }, 100);
 }
 
@@ -784,26 +832,29 @@ function updateHeatmap() {
     const gridData = generateKernelDensityGrid(variable, category);
     
     if (gridData.length > 0) {
-        // Calculate better gradient distribution for actual data range
+        // Calculate normalized value distribution
         const values = gridData.map(point => point[2]);
         const minVal = Math.min(...values);
         const maxVal = Math.max(...values);
         
+        console.log(`Final heatmap values: min=${minVal.toFixed(3)}, max=${maxVal.toFixed(3)}`);
+        
         heatLayer = L.heatLayer(gridData, {
-            radius: 40,      // Larger radius for better coverage
-            blur: 30,        // More blur for smoother appearance
+            radius: 45,      // Larger radius for better coverage
+            blur: 35,        // More blur for smoother appearance
             maxZoom: 17,
-            minOpacity: 0.4, // Better visibility
-            max: Math.max(maxVal, 0.8), // Dynamic max based on actual data
+            minOpacity: 0.5, // Better base visibility
+            max: 1.0,        // Always use full scale
             gradient: {
-                0.0: 'rgba(0,100,255,0.7)',    // Deep blue
-                0.15: 'rgba(0,180,255,0.75)',   // Light blue
-                0.3: 'rgba(0,255,180,0.8)',    // Cyan-green
-                0.45: 'rgba(100,255,100,0.85)', // Light green
-                0.6: 'rgba(255,255,0,0.9)',    // Yellow
-                0.75: 'rgba(255,150,0,0.9)',    // Orange
-                0.9: 'rgba(255,80,0,0.95)',    // Red-orange
-                1.0: 'rgba(255,0,0,1.0)'       // Deep red
+                0.0: 'rgba(30,60,255,0.8)',     // Deep blue
+                0.1: 'rgba(0,120,255,0.8)',     // Medium blue  
+                0.25: 'rgba(0,180,255,0.85)',   // Light blue
+                0.4: 'rgba(0,255,200,0.85)',    // Cyan
+                0.55: 'rgba(100,255,100,0.9)',  // Green
+                0.7: 'rgba(255,255,0,0.9)',     // Yellow
+                0.8: 'rgba(255,150,0,0.95)',    // Orange
+                0.9: 'rgba(255,80,0,0.95)',     // Red-orange
+                1.0: 'rgba(255,0,0,1.0)'        // Deep red
             }
         }).addTo(map);
     }
@@ -821,6 +872,9 @@ function generateKernelDensityGrid(variable, category) {
     const minScore = Math.min(...scores);
     const maxScore = Math.max(...scores);
     const avgScore = scores.reduce((a,b) => a+b, 0) / scores.length;
+    const scoreRange = maxScore - minScore;
+    
+    console.log(`Heatmap for ${variable}: min=${minScore.toFixed(1)}, max=${maxScore.toFixed(1)}, avg=${avgScore.toFixed(1)}, range=${scoreRange.toFixed(1)}`);
     
     const gridData = [];
     const gridSize = 0.008; // Slightly larger grid for better performance
@@ -831,16 +885,17 @@ function generateKernelDensityGrid(variable, category) {
     const centerLng = GwangmyeongCenter[1];
     const radius = 0.15; // Coverage radius
     
+    const allGridScores = [];
+    
+    // First pass: calculate all scores
     for (let lat = AreaBounds.south; lat <= AreaBounds.north; lat += gridSize) {
         for (let lng = AreaBounds.west; lng <= AreaBounds.east; lng += gridSize) {
-            // Check if point is within circular area (more natural shape)
             const distFromCenter = Math.sqrt(Math.pow(lat - centerLat, 2) + Math.pow(lng - centerLng, 2));
             if (distFromCenter > radius) continue;
             
             let weightedScore = 0;
             let totalWeight = 0;
             
-            // Calculate weighted average score at this grid point
             filteredRestaurants.forEach(r => {
                 const distance = Math.sqrt(Math.pow(lat - r.lat, 2) + Math.pow(lng - r.lng, 2));
                 const kernelValue = gaussianKernel(distance, bandwidth);
@@ -850,22 +905,42 @@ function generateKernelDensityGrid(variable, category) {
                 totalWeight += kernelValue;
             });
             
-            // Fallback to area average for points with low influence
-            let finalScore = totalWeight > 0.001 ? weightedScore / totalWeight : avgScore;
-            
-            // Normalize score to 0-1 range based on actual data range
-            const normalizedScore = maxScore > minScore ? (finalScore - minScore) / (maxScore - minScore) : 0.5;
-            
-            // Add falloff towards edges for more natural appearance
-            const edgeFalloff = Math.max(0.2, 1 - (distFromCenter / radius));
-            const adjustedScore = normalizedScore * edgeFalloff;
-            
-            if (adjustedScore > 0.1) { // Only add meaningful points
-                gridData.push([lat, lng, Math.min(adjustedScore, 1)]);
-            }
+            const finalScore = totalWeight > 0.001 ? weightedScore / totalWeight : avgScore;
+            allGridScores.push({lat, lng, score: finalScore, distFromCenter});
         }
     }
     
+    // Calculate grid-level statistics for better normalization
+    const gridScores = allGridScores.map(g => g.score);
+    const gridMin = Math.min(...gridScores);
+    const gridMax = Math.max(...gridScores);
+    const gridRange = gridMax - gridMin;
+    
+    console.log(`Grid normalization: min=${gridMin.toFixed(1)}, max=${gridMax.toFixed(1)}, range=${gridRange.toFixed(1)}`);
+    
+    // Second pass: normalize and create final grid data
+    allGridScores.forEach(({lat, lng, score, distFromCenter}) => {
+        // Use robust normalization with percentile-based scaling
+        let normalizedScore = 0.5; // Default to middle
+        
+        if (gridRange > 1) { // Only normalize if there's meaningful variation
+            normalizedScore = (score - gridMin) / gridRange;
+            
+            // Apply sigmoid transformation for better color distribution
+            normalizedScore = 1 / (1 + Math.exp(-6 * (normalizedScore - 0.5)));
+        }
+        
+        // Add falloff towards edges for more natural appearance
+        const edgeFalloff = Math.max(0.3, 1 - (distFromCenter / radius));
+        const adjustedScore = normalizedScore * edgeFalloff;
+        
+        // Ensure minimum visibility and add some variance
+        const finalValue = Math.max(0.1, Math.min(0.95, adjustedScore));
+        
+        gridData.push([lat, lng, finalValue]);
+    });
+    
+    console.log(`Generated ${gridData.length} grid points for heatmap`);
     return gridData;
 }
 
@@ -1567,6 +1642,16 @@ function updateTypeMap() {
 // ==================== FEATURE 8: STRATEGY MAP ====================
 function renderStrategyMapPage() {
     const page = document.getElementById('strategymap-page');
+    
+    // Debug: log subcategory stats
+    console.log('Available subcategories and counts:');
+    const subcategoryCounts = {};
+    allRestaurants.forEach(r => {
+        if (r.subcategory) {
+            subcategoryCounts[r.subcategory] = (subcategoryCounts[r.subcategory] || 0) + 1;
+        }
+    });
+    console.table(subcategoryCounts);
     const emds = Object.keys(stats.emd);
     const randomEmd = emds[Math.floor(Math.random() * emds.length)];
     
@@ -1635,10 +1720,32 @@ function updateStrategyMap() {
     const xVar = document.getElementById('strategyX').value;
     const yVar = document.getElementById('strategyY').value;
     
+    // Debug: Log all restaurants with this subcategory
+    const allSubcategoryRestaurants = allRestaurants.filter(r => r.subcategory === subcategory);
+    console.log(`Total ${subcategory} restaurants: ${allSubcategoryRestaurants.length}`);
+    
     const subcategoryRestaurants = allRestaurants
-        .filter(r => r.subcategory === subcategory && r.avg_confidence >= 80)
+        .filter(r => {
+            const subcategoryMatch = r.subcategory === subcategory;
+            const confidencePass = r.avg_confidence >= 70; // Lowered from 80 to 70
+            return subcategoryMatch && confidencePass;
+        })
         .sort(() => 0.5 - Math.random())
-        .slice(0, 40);
+        .slice(0, 50); // Increased from 40 to 50
+    
+    console.log(`Strategy map for ${subcategory}: found ${subcategoryRestaurants.length} restaurants with confidence >= 70`);
+    
+    if (subcategoryRestaurants.length === 0) {
+        console.warn(`No restaurants found for subcategory: ${subcategory}`);
+        // Show placeholder message
+        document.getElementById('strategyHoverInfo').innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: #666;">
+                <h4>데이터 부족</h4>
+                <p>${subcategory} 유형의 충분한 데이터가 없습니다.</p>
+            </div>
+        `;
+        return;
+    }
     
     // Calculate responsive scale ranges for better visualization
     const xValues = subcategoryRestaurants.map(r => getScoreValue(r, xVar));
