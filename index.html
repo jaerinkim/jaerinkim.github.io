@@ -8,7 +8,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.20/pdfmake.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.20/vfs_fonts.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
@@ -2166,155 +2167,136 @@ function variance(arr) {
 // ==================== PDF DOWNLOAD ====================
 async function downloadPDF() {
     loadingOverlay.style.display = 'flex';
-            loadingOverlay.querySelector('p').textContent = 'Generating PDF...';
+    loadingOverlay.querySelector('p').textContent = 'PDF 생성 중...';
     
     try {
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
+        // Get current selections
+        const heatmapVar = document.getElementById('heatmapVariable')?.value || '설정되지 않음';
+        const categoryFilter = document.getElementById('mapCategoryFilter')?.value || '전체';
+        const deviationMode = document.getElementById('deviationToggle')?.checked ? '활성화' : '비활성화';
         
-        // Add cover page with current selections and annotations
-        addCoverPage(pdf);
-        
-        const pagesToCapture = ['map-page', 'comparison-page', 'franchise-page', 'typemap-page', 'strategymap-page'];
-        const pageDescriptions = {
-            'map-page': 'Map Analysis: Restaurant locations and heatmap analysis. Click points to view detailed information.',
-            'comparison-page': 'Regional Comparison: Compare key metrics between different areas. Add/remove variables for custom analysis.',
-            'franchise-page': 'Restaurant Type Analysis: Analyze differentiated stores in selected restaurant categories.',
-            'typemap-page': 'Type Distribution Map: Visualize characteristics of each restaurant type in a 2D map.',
-            'strategymap-page': 'Strategy Map: Visualize restaurants by variables to analyze positioning and competitive landscape.'
+        // Define the document content using PDFMake's declarative structure
+        const docDefinition = {
+            content: [
+                // Cover page
+                {
+                    text: '상권.shop 분석 리포트',
+                    style: 'header',
+                    alignment: 'center',
+                    margin: [0, 50, 0, 30]
+                },
+                {
+                    text: `생성일시: ${new Date().toLocaleDateString('ko-KR')} ${new Date().toLocaleTimeString('ko-KR')}`,
+                    alignment: 'center',
+                    margin: [0, 0, 0, 50]
+                },
+                
+                // Current settings
+                {
+                    text: '현재 선택 사항',
+                    style: 'subheader',
+                    margin: [0, 20, 0, 10]
+                },
+                {
+                    ul: [
+                        `히트맵 변수: ${variableLabels[heatmapVar] || heatmapVar}`,
+                        `업종 필터: ${categoryFilter}`,
+                        `틈새 시장 표시: ${deviationMode}`
+                    ],
+                    margin: [0, 0, 0, 20]
+                },
+                
+                // Data summary
+                {
+                    text: '데이터 요약',
+                    style: 'subheader',
+                    margin: [0, 20, 0, 10]
+                },
+                {
+                    ul: [
+                        `전체 음식점 수: ${allRestaurants.length}개`,
+                        `분석 지역: 광명시`,
+                        `주요 업종: 한식, 중식, 일식, 양식, 카페 등`
+                    ],
+                    margin: [0, 0, 0, 20]
+                },
+                
+                // Instructions
+                {
+                    text: '사용 방법',
+                    style: 'subheader',
+                    margin: [0, 20, 0, 10]
+                },
+                {
+                    ul: [
+                        '지도 분석: 점을 클릭하면 가게 상세 정보 확인 가능',
+                        '지역 비교: 변수 추가/제거로 맞춤 분석',
+                        '음식점 유형 분석: 유형별 차별화 요소 분석',
+                        '전략 지도: 점 클릭으로 가게 비교 분석',
+                        '모든 차트는 데이터 범위에 맞춰 자동 조정됨'
+                    ]
+                },
+                
+                // Page break
+                { text: '', pageBreak: 'after' },
+                
+                // Note about web application
+                {
+                    text: '실시간 분석',
+                    style: 'subheader',
+                    margin: [0, 20, 0, 10]
+                },
+                {
+                    text: [
+                        '실시간 분석 결과는 웹 애플리케이션에서 확인하실 수 있습니다.\n\n',
+                        { text: 'web: https://jaerinkim.github.io/', link: 'https://jaerinkim.github.io/' },
+                        '\n이메일: contact@sangkwon.shop'
+                    ],
+                    margin: [0, 10, 0, 20]
+                }
+            ],
+            
+            styles: {
+                header: {
+                    fontSize: 24,
+                    bold: true,
+                    color: '#667eea'
+                },
+                subheader: {
+                    fontSize: 16,
+                    bold: true,
+                    color: '#333'
+                }
+            },
+            
+            defaultStyle: {
+                fontSize: 11,
+                lineHeight: 1.5
+            },
+            
+            info: {
+                title: '상권.shop 분석 리포트',
+                author: 'Sangkwon.shop',
+                subject: 'Restaurant Market Analysis Report',
+                keywords: 'restaurant, market analysis, Gwangmyeong'
+            }
         };
         
-        for(let i = 0; i < pagesToCapture.length; i++) {
-            loadingOverlay.querySelector('p').textContent = `Generating PDF... (${i+2}/${pagesToCapture.length+1})`;
-            
-            pdf.addPage();
-            
-            // Add page title and description
-            pdf.setFontSize(16);
-            pdf.setFont(undefined, 'bold');
-            pdf.text(pageDescriptions[pagesToCapture[i]].split(':')[0], 20, 25);
-            
-            pdf.setFontSize(10);
-            pdf.setFont(undefined, 'normal');
-            const description = pageDescriptions[pagesToCapture[i]].split(':')[1];
-            const lines = pdf.splitTextToSize(description, 170);
-            pdf.text(lines, 20, 35);
-            
-            navigateTo(pagesToCapture[i]);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            const canvas = await html2canvas(document.getElementById(pagesToCapture[i]), { 
-                scale: 1.2,
-                logging: false,
-                useCORS: true,
-                height: window.innerHeight - 100
-            });
-            const imgData = canvas.toDataURL('image/png');
-            
-            const imgProps = pdf.getImageProperties(imgData);
-            const pdfWidth = pdf.internal.pageSize.getWidth() - 40;
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-            
-            pdf.addImage(imgData, 'PNG', 20, 50, pdfWidth, Math.min(pdfHeight, 230));
-        }
-        
-        const currentDate = new Date().toLocaleDateString('en-US').replace(/\//g, '-');
-        pdf.save(`Sangkwon_Analysis_Report_${currentDate}.pdf`);
+        // Generate and download the PDF
+        const currentDate = new Date().toLocaleDateString('ko-KR').replace(/\./g, '').replace(/\s/g, '');
+        pdfMake.createPdf(docDefinition).download(`상권분석_리포트_${currentDate}.pdf`);
         
     } catch(e) {
         console.error("PDF generation failed:", e);
-        alert("PDF generation failed. Please try again.");
+        alert("PDF 생성에 실패했습니다. 다시 시도해주세요.");
     } finally {
         loadingOverlay.style.display = 'none';
-        loadingOverlay.querySelector('p').textContent = 'Loading data...';
+        loadingOverlay.querySelector('p').textContent = '데이터를 불러오는 중입니다...';
         navigateTo('map-page');
     }
 }
 
-function addCoverPage(pdf) {
-    // Cover page with current selections (English text to avoid encoding issues)
-    pdf.setFontSize(24);
-    pdf.setFont(undefined, 'bold');
-    pdf.text('Sangkwon.shop Analysis Report', 20, 30);
-    
-    pdf.setFontSize(14);
-    pdf.setFont(undefined, 'normal');
-    pdf.text(`Generated: ${new Date().toLocaleDateString('en-US')} ${new Date().toLocaleTimeString('en-US')}`, 20, 45);
-    
-    // Current selections summary
-    pdf.setFontSize(16);
-    pdf.setFont(undefined, 'bold');
-    pdf.text('Current Settings', 20, 65);
-    
-    pdf.setFontSize(12);
-    pdf.setFont(undefined, 'normal');
-    let yPos = 80;
-    
-    // Get current selections from various pages
-    const heatmapVar = document.getElementById('heatmapVariable')?.value || 'not set';
-    const categoryFilter = document.getElementById('mapCategoryFilter')?.value || 'all';
-    const deviationMode = document.getElementById('deviationToggle')?.checked ? 'enabled' : 'disabled';
-    
-    // Create English variable names mapping
-    const englishVariableLabels = {
-        'price_level': 'Price Level',
-        'price_value_for_money': 'Value for Money',
-        'atmosphere_energy_level': 'Energy Level',
-        'atmosphere_formality': 'Formality',
-        'cleanliness_and_hygiene': 'Cleanliness',
-        'service_staff_friendliness': 'Staff Friendliness',
-        'taste_spiciness': 'Spiciness',
-        'taste_sweetness': 'Sweetness',
-        'offering_quality_core': 'Core Quality'
-    };
-    
-    pdf.text(`• Heatmap Variable: ${englishVariableLabels[heatmapVar] || variableLabels[heatmapVar] || heatmapVar}`, 25, yPos);
-    yPos += 10;
-    pdf.text(`• Category Filter: ${categoryFilter}`, 25, yPos);
-    yPos += 10;
-    pdf.text(`• Niche Market Display: ${deviationMode}`, 25, yPos);
-    yPos += 15;
-    
-    // Summary statistics
-    pdf.setFontSize(16);
-    pdf.setFont(undefined, 'bold');
-    pdf.text('Data Summary', 20, yPos);
-    yPos += 15;
-    
-    pdf.setFontSize(12);
-    pdf.setFont(undefined, 'normal');
-    pdf.text(`• Total Restaurants: ${allRestaurants.length}`, 25, yPos);
-    yPos += 10;
-    
-    const subcategories = [...new Set(allRestaurants.map(r => r.subcategory))];
-    pdf.text(`• Restaurant Types: ${subcategories.slice(0, 8).join(', ')}${subcategories.length > 8 ? '...' : ''}`, 25, yPos);
-    yPos += 10;
-    
-    const emds = [...new Set(allRestaurants.map(r => r.emd))];
-    pdf.text(`• Analysis Areas: ${emds.join(', ')}`, 25, yPos);
-    yPos += 20;
-    
-    // Instructions
-    pdf.setFontSize(16);
-    pdf.setFont(undefined, 'bold');
-    pdf.text('How to Use', 20, yPos);
-    yPos += 15;
-    
-    pdf.setFontSize(10);
-    pdf.setFont(undefined, 'normal');
-    const instructions = [
-        '• Map Analysis: Click points to view detailed restaurant information',
-        '• Regional Comparison: Add/remove variables for custom analysis',
-        '• Restaurant Type Analysis: Analyze differentiation factors by type',
-        '• Strategy Map: Click points to compare restaurants',
-        '• All charts automatically adjust to data ranges'
-    ];
-    
-    instructions.forEach(instruction => {
-        pdf.text(instruction, 25, yPos);
-        yPos += 8;
-    });
-}
+
 
 
 
