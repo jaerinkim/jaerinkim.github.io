@@ -280,13 +280,16 @@ let stats = { city: {}, emd: {}, subcategory: {}, franchise: {} };
 let map, heatLayer = null, markerLayer = L.layerGroup();
 let currentPage = 'map-page', confidenceThreshold = 70;
 let charts = {};
+let autoCycleInterval = null;
+let isAutoCycling = false;
+let currentVariableIndex = 0;
 
 const GwangmyeongCenter = [37.4786, 126.8644];
 const AreaBounds = {
-    north: 37.4786 + 0.075,  // 1.5x the original 0.05 range
-    south: 37.4786 - 0.075,
-    east: 126.8644 + 0.075,
-    west: 126.8644 - 0.075
+    north: 37.4786 + 0.15,   // 3x the original range for much larger coverage
+    south: 37.4786 - 0.15,
+    east: 126.8644 + 0.15,
+    west: 126.8644 - 0.15
 };
 const loadingOverlay = document.getElementById('loadingOverlay');
 
@@ -373,8 +376,8 @@ function parseRealData(jsonlText, csvText) {
                 key: key,
                 name: key.split(' at ')[0],
                 address: key.split(' at ')[1],
-                lat: parseFloat(extra.lat) || (GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.15),  // 1.5x larger area
-                lng: parseFloat(extra.lng) || (GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.15),
+                lat: parseFloat(extra.lat) || (GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.3),   // 3x larger area
+                lng: parseFloat(extra.lng) || (GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.3),
                 subcategory: extra.subcategory || detectSubcategory(parsed),
                 emd: extra.emd_name || getRandomEmd(),
                 franchise: detectFranchise(key),
@@ -419,8 +422,8 @@ function generateMockData() {
                 key: `${emd}${i}_restaurant at 경기도 광명시 ${emd} ${i+1}`,
                 name: `${emd} ${subcategory} ${i + 1}`,
                 address: `경기도 광명시 ${emd} ${i+1}번지`,
-                lat: GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.15,  // 1.5x larger area
-                lng: GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.15,
+                lat: GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.3,   // 3x larger area
+                lng: GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.3,
                 emd: emd,
                 subcategory: subcategory,
                 franchise: franchise,
@@ -629,9 +632,14 @@ function renderMapPage() {
         <h3>🗺️ 지도 분석</h3>
         <div class="control-group">
             <label for="heatmapVariable" style="font-weight: 800;">히트맵 변수</label>
-            <select id="heatmapVariable" onchange="updateMapVisualization()" style="font-weight: 700;">
-                ${Object.entries(variableLabels).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}
-            </select>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <select id="heatmapVariable" onchange="updateMapVisualization()" style="font-weight: 700; flex: 1;">
+                    ${Object.entries(variableLabels).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}
+                </select>
+                <button id="autoCycleBtn" onclick="toggleAutoCycle()" class="btn btn-primary" style="padding: 0.8rem; min-width: 100px; font-size: 0.9rem;">
+                    ▶️ 자동
+                </button>
+            </div>
         </div>
         <div class="control-group">
             <label for="mapCategoryFilter" style="font-weight: 800;">업종 필터</label>
@@ -641,11 +649,9 @@ function renderMapPage() {
             </select>
         </div>
         <div class="control-group">
-            <label class="toggle-switch">
-                <input type="checkbox" id="deviationToggle">
-                <span class="toggle-slider"></span>
-                <span style="font-weight: 800;">틈새 시장 표시</span>
-            </label>
+            <button id="nicheModeBtn" onclick="toggleNicheMode()" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1rem;">
+                틈새시장을 표시
+            </button>
         </div>
         <div style="margin-top: 1.5rem;">
             <div style="font-weight: 800; margin-bottom: 0.5rem; color: var(--primary);">히트맵 범위</div>
@@ -670,30 +676,73 @@ function updateMapVisualization() {
 
 function setupMapControls() {
     const categoryFilter = document.getElementById('mapCategoryFilter');
-    const deviationToggle = document.getElementById('deviationToggle');
     
     categoryFilter.addEventListener('change', applyMapFilters);
-    deviationToggle.addEventListener('change', applyMapFilters);
+    
+    // Set up auto-cycle functionality
+    window.toggleAutoCycle = () => {
+        const btn = document.getElementById('autoCycleBtn');
+        if (isAutoCycling) {
+            clearInterval(autoCycleInterval);
+            isAutoCycling = false;
+            btn.innerHTML = '▶️ 자동';
+            btn.style.background = 'linear-gradient(135deg, var(--primary), var(--secondary))';
+        } else {
+            startAutoCycle();
+            isAutoCycling = true;
+            btn.innerHTML = '⏸️ 일시정지';
+            btn.style.background = 'linear-gradient(135deg, var(--success), #27ae60)';
+        }
+    };
+    
+    // Set up niche mode toggle
+    window.toggleNicheMode = () => {
+        const btn = document.getElementById('nicheModeBtn');
+        const isNicheMode = btn.textContent.includes('틈새시장을');
+        
+        if (isNicheMode) {
+            btn.innerHTML = '모든 가게를 표시';
+            btn.style.background = 'linear-gradient(135deg, var(--danger), #c0392b)';
+            filteredRestaurants = allRestaurants.filter(r => {
+                const confidencePass = r.avg_confidence >= 70;
+                const categoryPass = document.getElementById('mapCategoryFilter').value === 'all' || r.subcategory === document.getElementById('mapCategoryFilter').value;
+                return confidencePass && categoryPass && isDeviation(r);
+            });
+        } else {
+            btn.innerHTML = '틈새시장을 표시';
+            btn.style.background = 'linear-gradient(135deg, var(--primary), var(--secondary))';
+            applyMapFilters();
+            return;
+        }
+        
+        updateMapVisualization();
+    };
+}
+
+function startAutoCycle() {
+    const variableKeys = Object.keys(variableLabels);
+    
+    autoCycleInterval = setInterval(() => {
+        currentVariableIndex = (currentVariableIndex + 1) % variableKeys.length;
+        const newVariable = variableKeys[currentVariableIndex];
+        
+        document.getElementById('heatmapVariable').value = newVariable;
+        updateMapVisualization();
+    }, 5000);
 }
 
 function applyMapFilters() {
     const categoryFilter = document.getElementById('mapCategoryFilter');
-    const deviationToggle = document.getElementById('deviationToggle');
     
     if (!categoryFilter) return;
     
     const selectedCategory = categoryFilter.value;
-    const showDeviations = deviationToggle.checked;
     
     filteredRestaurants = allRestaurants.filter(r => {
         const confidencePass = r.avg_confidence >= 70; // Fixed at 70
         const categoryPass = selectedCategory === 'all' || r.subcategory === selectedCategory;
         return confidencePass && categoryPass;
     });
-
-    if (showDeviations) {
-        filteredRestaurants = filteredRestaurants.filter(r => isDeviation(r));
-    }
 
     updateMapVisualization();
 }
@@ -735,18 +784,26 @@ function updateHeatmap() {
     const gridData = generateKernelDensityGrid(variable, category);
     
     if (gridData.length > 0) {
+        // Calculate better gradient distribution for actual data range
+        const values = gridData.map(point => point[2]);
+        const minVal = Math.min(...values);
+        const maxVal = Math.max(...values);
+        
         heatLayer = L.heatLayer(gridData, {
-            radius: 35,      // Larger radius for better coverage
-            blur: 25,        // More blur for smoother appearance
+            radius: 40,      // Larger radius for better coverage
+            blur: 30,        // More blur for smoother appearance
             maxZoom: 17,
-            minOpacity: 0.3, // Ensure visibility even in sparse areas
+            minOpacity: 0.4, // Better visibility
+            max: Math.max(maxVal, 0.8), // Dynamic max based on actual data
             gradient: {
-                0.0: 'rgba(0,0,255,0.6)',     // Blue with transparency
-                0.2: 'rgba(0,255,255,0.7)',   // Cyan
-                0.4: 'rgba(0,255,0,0.8)',     // Green
-                0.6: 'rgba(255,255,0,0.8)',   // Yellow
-                0.8: 'rgba(255,165,0,0.9)',   // Orange
-                1.0: 'rgba(255,0,0,1.0)'      // Red
+                0.0: 'rgba(0,100,255,0.7)',    // Deep blue
+                0.15: 'rgba(0,180,255,0.75)',   // Light blue
+                0.3: 'rgba(0,255,180,0.8)',    // Cyan-green
+                0.45: 'rgba(100,255,100,0.85)', // Light green
+                0.6: 'rgba(255,255,0,0.9)',    // Yellow
+                0.75: 'rgba(255,150,0,0.9)',    // Orange
+                0.9: 'rgba(255,80,0,0.95)',    // Red-orange
+                1.0: 'rgba(255,0,0,1.0)'       // Deep red
             }
         }).addTo(map);
     }
@@ -757,28 +814,54 @@ function generateKernelDensityGrid(variable, category) {
         return (r.avg_confidence >= 70) && (category === 'all' || r.subcategory === category);
     });
     
-    const gridData = [];
-    const gridSize = 0.005; // Grid resolution
+    if (filteredRestaurants.length === 0) return [];
     
-    // Create a denser grid covering the enlarged area
+    // Calculate actual score range for proper color scaling
+    const scores = filteredRestaurants.map(r => getScoreValue(r, variable));
+    const minScore = Math.min(...scores);
+    const maxScore = Math.max(...scores);
+    const avgScore = scores.reduce((a,b) => a+b, 0) / scores.length;
+    
+    const gridData = [];
+    const gridSize = 0.008; // Slightly larger grid for better performance
+    const bandwidth = 0.02; // Larger bandwidth for smoother gradation
+    
+    // Create circular/hexagonal coverage area instead of rectangle
+    const centerLat = GwangmyeongCenter[0];
+    const centerLng = GwangmyeongCenter[1];
+    const radius = 0.15; // Coverage radius
+    
     for (let lat = AreaBounds.south; lat <= AreaBounds.north; lat += gridSize) {
         for (let lng = AreaBounds.west; lng <= AreaBounds.east; lng += gridSize) {
-            let density = 0;
-            const bandwidth = 0.01; // Kernel bandwidth
+            // Check if point is within circular area (more natural shape)
+            const distFromCenter = Math.sqrt(Math.pow(lat - centerLat, 2) + Math.pow(lng - centerLng, 2));
+            if (distFromCenter > radius) continue;
             
-            // Calculate kernel density at this grid point
+            let weightedScore = 0;
+            let totalWeight = 0;
+            
+            // Calculate weighted average score at this grid point
             filteredRestaurants.forEach(r => {
                 const distance = Math.sqrt(Math.pow(lat - r.lat, 2) + Math.pow(lng - r.lng, 2));
                 const kernelValue = gaussianKernel(distance, bandwidth);
-                const restaurantScore = getScoreValue(r, variable) / 100;
-                density += kernelValue * restaurantScore;
+                const restaurantScore = getScoreValue(r, variable);
+                
+                weightedScore += kernelValue * restaurantScore;
+                totalWeight += kernelValue;
             });
             
-            // Add base density to ensure visibility everywhere
-            density = Math.max(density, 0.1);
+            // Fallback to area average for points with low influence
+            let finalScore = totalWeight > 0.001 ? weightedScore / totalWeight : avgScore;
             
-            if (density > 0.05) { // Only add points with meaningful density
-                gridData.push([lat, lng, Math.min(density, 1)]);
+            // Normalize score to 0-1 range based on actual data range
+            const normalizedScore = maxScore > minScore ? (finalScore - minScore) / (maxScore - minScore) : 0.5;
+            
+            // Add falloff towards edges for more natural appearance
+            const edgeFalloff = Math.max(0.2, 1 - (distFromCenter / radius));
+            const adjustedScore = normalizedScore * edgeFalloff;
+            
+            if (adjustedScore > 0.1) { // Only add meaningful points
+                gridData.push([lat, lng, Math.min(adjustedScore, 1)]);
             }
         }
     }
@@ -1518,13 +1601,13 @@ function renderStrategyMapPage() {
                 </div>
                 <div class="dimension-control">
                     <label style="font-weight: 800; color: var(--primary); font-size: 1.1rem; margin-bottom: 0.8rem;">다른 가게 분석</label>
-                    <button id="analyzeOtherShop" class="btn btn-primary" style="width: 100%; margin: 0; padding: 1rem; font-size: 1rem;">다른 가게와 비교하기</button>
+                    <button id="analyzeOtherShop" class="btn btn-primary" style="width: 100%; margin: 0; padding: 1rem; font-size: 1rem;">다른 가게 분석</button>
                 </div>
             </div>
             <div class="chart-container">
                 <canvas id="strategyChart"></canvas>
             </div>
-            <div id="strategyHoverInfo" style="margin-top: 2rem; padding: 1.5rem; background: var(--bg); border-radius: 12px; min-height: 100px;"></div>
+            <div id="strategyHoverInfo" style="margin-top: 2rem; padding: 1.5rem; background: var(--bg); border-radius: 12px; min-height: 100px; max-height: 400px; overflow-y: auto;"></div>
         </div>
     `;
     
@@ -1532,25 +1615,12 @@ function renderStrategyMapPage() {
     document.getElementById('strategyX').addEventListener('change', updateStrategyMap);
     document.getElementById('strategyY').addEventListener('change', updateStrategyMap);
     
-    // Add event listener for "다른 가게 분석" button
+    // Add event listener for "다른 가게 분석" button - updates plot with different restaurants
     document.getElementById('analyzeOtherShop').addEventListener('click', () => {
         const subcategory = document.getElementById('strategySubcategory').value;
-        const subcategoryRestaurants = allRestaurants.filter(r => r.subcategory === subcategory && r.avg_confidence >= 80);
-        
-        if (subcategoryRestaurants.length >= 2) {
-            // Select two random restaurants for comparison
-            const shuffled = [...subcategoryRestaurants].sort(() => 0.5 - Math.random());
-            const shop1 = shuffled[0];
-            const shop2 = shuffled[1];
-            
-            // Show comparison in modal
-            document.getElementById('shopModalTitle').textContent = `${shop1.name} vs ${shop2.name} 비교 분석`;
-            
-            // Render comparison
-            renderShopComparison(shop1, shop2);
-            document.getElementById('shopModal').style.display = 'flex';
-        } else {
-            alert('비교할 다른 가게가 충분하지 않습니다.');
+        if (subcategory) {
+            // Simply refresh the strategy map with different random restaurants
+            updateStrategyMap();
         }
     });
     
@@ -1702,32 +1772,36 @@ function showStrategyHoverInfo(restaurant, xVar, yVar) {
     const yComponents = restaurant.universal_scores[yVar]?.components || [];
     
     info.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem;">
-            <div>
-                <h4>${restaurant.name}</h4>
-                <p style="color: #666;">${restaurant.address}</p>
-                <p style="margin-top: 1rem;">${restaurant.latent_summary}</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem; height: auto; max-height: 350px;">
+            <div style="min-height: 200px;">
+                <h4 style="color: var(--primary); font-weight: 900;">${restaurant.name}</h4>
+                <p style="color: #666; font-weight: 700;">${restaurant.address}</p>
+                <p style="margin-top: 1rem; color: #555; line-height: 1.5;">${restaurant.latent_summary}</p>
             </div>
-            <div>
-                <h5>${variableLabels[xVar]} 분포</h5>
-                <canvas id="xDensity" width="250" height="120"></canvas>
-                <div style="margin-top: 1rem; font-size: 0.9rem;">
+            <div style="min-height: 200px; max-height: 300px; overflow-y: auto;">
+                <h5 style="color: var(--secondary); font-weight: 800;">${variableLabels[xVar]} 분포</h5>
+                <div style="height: 100px; margin: 0.5rem 0;">
+                    <canvas id="xDensity" width="200" height="80" style="max-width: 100%; height: auto;"></canvas>
+                </div>
+                <div style="font-size: 0.8rem;">
                     ${xComponents.map(c => `
-                        <div style="display: flex; justify-content: space-between; margin: 0.5rem 0;">
-                            <span>${c.component_name}</span>
-                            <span>${c.point_score.toFixed(1)} (${(c.weight * 100).toFixed(0)}%)</span>
+                        <div style="display: flex; justify-content: space-between; margin: 0.3rem 0; padding: 0.2rem; background: #f8f9fa; border-radius: 4px;">
+                            <span style="font-weight: 700; font-size: 0.75rem;">${c.component_name}</span>
+                            <span style="color: var(--primary); font-weight: 800; font-size: 0.75rem;">${c.point_score.toFixed(1)} (${(c.weight * 100).toFixed(0)}%)</span>
                         </div>
                     `).join('')}
                 </div>
             </div>
-            <div>
-                <h5>${variableLabels[yVar]} 분포</h5>
-                <canvas id="yDensity" width="250" height="120"></canvas>
-                <div style="margin-top: 1rem; font-size: 0.9rem;">
+            <div style="min-height: 200px; max-height: 300px; overflow-y: auto;">
+                <h5 style="color: var(--secondary); font-weight: 800;">${variableLabels[yVar]} 분포</h5>
+                <div style="height: 100px; margin: 0.5rem 0;">
+                    <canvas id="yDensity" width="200" height="80" style="max-width: 100%; height: auto;"></canvas>
+                </div>
+                <div style="font-size: 0.8rem;">
                     ${yComponents.map(c => `
-                        <div style="display: flex; justify-content: space-between; margin: 0.5rem 0;">
-                            <span>${c.component_name}</span>
-                            <span>${c.point_score.toFixed(1)} (${(c.weight * 100).toFixed(0)}%)</span>
+                        <div style="display: flex; justify-content: space-between; margin: 0.3rem 0; padding: 0.2rem; background: #f8f9fa; border-radius: 4px;">
+                            <span style="font-weight: 700; font-size: 0.75rem;">${c.component_name}</span>
+                            <span style="color: var(--primary); font-weight: 800; font-size: 0.75rem;">${c.point_score.toFixed(1)} (${(c.weight * 100).toFixed(0)}%)</span>
                         </div>
                     `).join('')}
                 </div>
@@ -1736,9 +1810,13 @@ function showStrategyHoverInfo(restaurant, xVar, yVar) {
     `;
     
     setTimeout(() => {
-        drawKernelDensity('xDensity', xComponents);
-        drawKernelDensity('yDensity', yComponents);
-    }, 100);
+        try {
+            drawKernelDensityFixed('xDensity', xComponents);
+            drawKernelDensityFixed('yDensity', yComponents);
+        } catch (e) {
+            console.warn('Chart rendering error:', e);
+        }
+    }, 50);
 }
 
 // ==================== UTILITY FUNCTIONS ====================
@@ -1820,6 +1898,78 @@ function drawKernelDensity(canvasId, components) {
             }
         }
     });
+}
+
+// Fixed version for strategy map to prevent layout issues
+function drawKernelDensityFixed(canvasId, components) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !components || components.length === 0) return;
+    
+    // Set fixed canvas dimensions to prevent layout issues
+    canvas.width = 200;
+    canvas.height = 80;
+    canvas.style.width = '100%';
+    canvas.style.height = '80px';
+    
+    const samples = [];
+    components.forEach(c => {
+        const count = Math.round(c.weight * 20); // Reduced count for performance
+        for (let i = 0; i < count; i++) {
+            samples.push(c.point_score + (Math.random() - 0.5) * 3);
+        }
+    });
+
+    if (samples.length < 2) return;
+    
+    try {
+        const ctx = canvas.getContext('2d');
+        
+        // Clear any existing chart
+        const existingChart = Chart.getChart(canvas);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+        
+        const bandwidth = Math.max(1, Math.sqrt(variance(samples)) * Math.pow(samples.length, -0.2));
+        
+        const kdeData = [];
+        for (let x = 0; x <= 100; x += 5) { // Larger steps for performance
+            kdeData.push({x: x, y: kernelDensityEstimator(kernelEpanechnikov(bandwidth), samples)(x)});
+        }
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: { 
+                datasets: [{ 
+                    data: kdeData, 
+                    borderColor: 'rgba(118, 75, 162, 0.8)', 
+                    fill: true, 
+                    backgroundColor: 'rgba(118, 75, 162, 0.2)', 
+                    borderWidth: 2, 
+                    pointRadius: 0,
+                    tension: 0.4
+                }] 
+            },
+            options: {
+                responsive: false, // Disable responsive to prevent layout issues
+                maintainAspectRatio: false,
+                animation: false, // Disable animation for performance
+                scales: { 
+                    x: { display: false }, 
+                    y: { display: false } 
+                },
+                plugins: { 
+                    legend: { display: false }, 
+                    tooltip: { enabled: false } 
+                },
+                layout: {
+                    padding: 0
+                }
+            }
+        });
+    } catch (e) {
+        console.warn('Chart creation failed:', e);
+    }
 }
 
 function kernelDensityEstimator(kernel, X) {
