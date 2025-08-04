@@ -930,9 +930,15 @@ function updateHeatmap() {
         const maxVal = Math.max(...values);
         const avgVal = values.reduce((a,b) => a+b, 0) / values.length;
         
-        console.log(`DEBUG: Final heatmap distribution for ${variable}:`);
+        console.log(`DEBUG: FIXED heatmap distribution for ${variable}:`);
         console.log(`- Normalized values: min=${minVal.toFixed(3)}, max=${maxVal.toFixed(3)}, avg=${avgVal.toFixed(3)}`);
         console.log(`- Sample normalized values:`, values.slice(0, 10).map(v => v.toFixed(3)));
+        console.log(`- Color spread check:`, {
+            'blue (0.0-0.3)': values.filter(v => v < 0.3).length,
+            'cyan (0.3-0.5)': values.filter(v => v >= 0.3 && v < 0.5).length,
+            'yellow (0.5-0.7)': values.filter(v => v >= 0.5 && v < 0.7).length,
+            'orange/red (0.7+)': values.filter(v => v >= 0.7).length
+        });
         
         // Use actual data range for proper scaling
         const actualRange = maxVal - minVal;
@@ -941,24 +947,24 @@ function updateHeatmap() {
         console.log(`DEBUG: Heatmap scaling: actualRange=${actualRange.toFixed(3)}, normalizedMax=${normalizedMax.toFixed(3)}`);
         
         heatLayer = L.heatLayer(gridData, {
-            radius: 25,      // Smaller radius for less smoothing
-            blur: 15,        // Less blur to preserve value differences
+            radius: 20,      // Smaller radius to preserve sharp boundaries
+            blur: 10,        // Minimal blur to maintain data integrity
             maxZoom: 17,
-            minOpacity: 0.3, // Lower minimum for better contrast
-            max: normalizedMax, // Use actual max or reasonable default
+            minOpacity: 0.2, // Very low minimum for maximum contrast
+            max: 0.95,       // Use fixed max since we normalize to 0.05-0.95
             gradient: {
-                0.0: 'rgba(30,60,255,0.8)',      // Deep blue for lowest values
-                0.1: 'rgba(0,120,255,0.8)',      // Medium blue
-                0.25: 'rgba(0,255,255,0.8)',     // Cyan
-                0.4: 'rgba(100,255,100,0.85)',   // Light green
-                0.55: 'rgba(255,255,0,0.9)',     // Yellow 
-                0.7: 'rgba(255,150,0,0.9)',      // Orange
-                0.85: 'rgba(255,50,0,0.95)',     // Red-orange
-                1.0: 'rgba(200,0,0,1.0)'         // Deep red for highest values
+                0.0: 'rgba(0,0,255,0.9)',        // Pure blue for lowest values
+                0.2: 'rgba(0,150,255,0.9)',      // Light blue
+                0.35: 'rgba(0,255,255,0.9)',     // Cyan
+                0.5: 'rgba(100,255,100,0.95)',   // Green
+                0.65: 'rgba(255,255,0,0.95)',    // Yellow 
+                0.8: 'rgba(255,150,0,0.95)',     // Orange
+                0.9: 'rgba(255,50,0,0.98)',      // Red-orange
+                1.0: 'rgba(255,0,0,1.0)'         // Pure red for highest values
             }
         }).addTo(map);
         
-        console.log(`Heatmap configured with radius=25, blur=15, max=${normalizedMax}`);
+        console.log(`Heatmap configured with radius=20, blur=10, max=0.95 (fixed)`);
     }
 }
 
@@ -1003,8 +1009,8 @@ function generateKernelDensityGrid(variable, category) {
     }
     
     const gridData = [];
-    const gridSize = 0.005; // Smaller grid for more precision
-    const bandwidth = 0.01; // Smaller bandwidth for less smoothing
+    const gridSize = 0.008; // Slightly larger grid for better performance
+    const bandwidth = 0.005; // Much smaller bandwidth to preserve sharp differences
     
     // Create circular coverage area
     const centerLat = GwangmyeongCenter[0];
@@ -1020,23 +1026,30 @@ function generateKernelDensityGrid(variable, category) {
             // Calculate interpolated value using inverse distance weighting
             let interpolatedScore = calculateInterpolatedValue(lat, lng, filteredRestaurants, variable, bandwidth);
             
-            // Normalize based on actual data range with better handling
+            // Fix normalization to preserve actual data variation
             let normalizedScore;
-            if (scoreRange > 1) {
-                // Use standard normalization for meaningful ranges
+            if (scoreRange > 5) {
+                // Standard normalization for good ranges
                 normalizedScore = (interpolatedScore - minScore) / scoreRange;
             } else {
-                // For small ranges, use a different approach to ensure visibility
-                if (interpolatedScore > minScore + scoreRange * 0.8) {
-                    normalizedScore = 0.8 + (interpolatedScore - (minScore + scoreRange * 0.8)) / (scoreRange * 0.2) * 0.2;
-                } else if (interpolatedScore > minScore + scoreRange * 0.5) {
-                    normalizedScore = 0.5 + (interpolatedScore - (minScore + scoreRange * 0.5)) / (scoreRange * 0.3) * 0.3;
+                // For compressed ranges, use actual restaurant min/max instead of interpolated values
+                const directScores = filteredRestaurants.map(r => getScoreValue(r, variable)).filter(s => s > 0);
+                if (directScores.length > 0) {
+                    const dataMin = Math.min(...directScores);
+                    const dataMax = Math.max(...directScores);
+                    const dataRange = dataMax - dataMin;
+                    if (dataRange > 0) {
+                        normalizedScore = (interpolatedScore - dataMin) / dataRange;
+                    } else {
+                        normalizedScore = 0.5;
+                    }
                 } else {
-                    normalizedScore = (interpolatedScore - minScore) / (scoreRange || 1) * 0.5;
+                    normalizedScore = 0.5;
                 }
             }
             
-            // Ensure values are between 0 and 1, but allow more variation
+            // Apply contrast enhancement to spread values across full 0-1 range
+            normalizedScore = Math.pow(normalizedScore, 0.7); // Gamma correction for better contrast
             normalizedScore = Math.max(0.05, Math.min(0.95, normalizedScore));
             
             gridData.push([lat, lng, normalizedScore]);
@@ -1047,22 +1060,33 @@ function generateKernelDensityGrid(variable, category) {
     return gridData;
 }
 
-// Calculate interpolated value using inverse distance weighting
+// Calculate interpolated value with better distance weighting to preserve variation
 function calculateInterpolatedValue(lat, lng, restaurants, variable, bandwidth) {
     let weightedSum = 0;
     let totalWeight = 0;
     const nearbyScores = [];
+    const maxInfluenceDistance = 0.02; // Only consider restaurants within 2km
     
     restaurants.forEach(r => {
         const distance = Math.sqrt(Math.pow(lat - r.lat, 2) + Math.pow(lng - r.lng, 2));
         
-        // Use inverse distance weighting with minimum distance threshold
-        const weight = distance < 0.001 ? 1000 : 1 / (distance + 0.001);
+        if (distance > maxInfluenceDistance) return; // Skip distant restaurants
+        
+        // Use more aggressive inverse distance weighting to preserve sharp differences
+        let weight;
+        if (distance < 0.0005) {
+            weight = 10000; // Very close = very high weight
+        } else if (distance < 0.002) {
+            weight = 1 / Math.pow(distance, 3); // Cubic inverse for nearby restaurants
+        } else {
+            weight = 1 / Math.pow(distance, 2); // Quadratic inverse for farther restaurants
+        }
+        
         const restaurantScore = getScoreValue(r, variable);
         
         // Collect nearby scores for debugging
         if (distance < 0.02 && variable === 'taste_spiciness') {
-            nearbyScores.push({name: r.name, score: restaurantScore, distance: distance.toFixed(4)});
+            nearbyScores.push({name: r.name, score: restaurantScore, distance: distance.toFixed(4), weight: weight.toFixed(2)});
         }
         
         weightedSum += weight * restaurantScore;
@@ -1073,7 +1097,7 @@ function calculateInterpolatedValue(lat, lng, restaurants, variable, bandwidth) 
     
     // Debug: Log interpolation details for some grid points when processing taste_spiciness
     if (variable === 'taste_spiciness' && Math.random() < 0.001) {
-        console.log(`DEBUG: Interpolation at (${lat.toFixed(4)}, ${lng.toFixed(4)}):`, {
+        console.log(`DEBUG: Enhanced interpolation at (${lat.toFixed(4)}, ${lng.toFixed(4)}):`, {
             nearbyScores: nearbyScores.slice(0, 3),
             interpolatedValue: interpolatedValue.toFixed(2),
             totalWeight: totalWeight.toFixed(2)
