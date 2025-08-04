@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>상권.shop - AI 기반 소상공인 전략 분석 플랫폼</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary: #667eea; --secondary: #764ba2; --bg: #f5f7fa; --text: #333;
+            --gray: #e0e0e0; --white: #ffffff; --danger: #e74c3c; --success: #2ecc71; --info: #3498db;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; font-weight: 700; }
+        .main-container { display: flex; height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar { width: 300px; background: var(--white); box-shadow: 2px 0 8px rgba(0,0,0,0.1); z-index: 1000; display: flex; flex-direction: column; }
+        .sidebar-header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: var(--white); padding: 1.5rem; text-align: center; }
+        .sidebar-header h1 { font-size: 2rem; margin-bottom: 0.5rem; font-weight: 900; }
+        .sidebar-header p { font-size: 1rem; opacity: 0.9; font-weight: 800; }
+        .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0; }
+        .nav-item { padding: 1rem 1.5rem; cursor: pointer; transition: all 0.2s; border-left: 4px solid transparent; display: flex; align-items: center; gap: 1rem; font-weight: 800; color: #555; font-size: 1rem; }
+        .nav-item:hover { background: var(--bg); border-left-color: var(--primary); }
+        .nav-item.active { background: #f0f4ff; border-left-color: var(--primary); color: var(--primary); font-weight: 900; }
+        .nav-icon { width: 24px; height: 24px; opacity: 0.7; }
+        .nav-item.active .nav-icon { opacity: 1; }
+
+        /* Content Area */
+        .content-area { flex: 1; position: relative; overflow: hidden; }
+        .page { display: none; width: 100%; height: 100%; }
+        .page.active { display: block; }
+        #map { width: 100%; height: 100%; }
+
+        /* Controls */
+        .control-panel { position: absolute; top: 20px; right: 20px; background: var(--white); padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 350px; z-index: 999; }
+        .control-panel h3 { color: var(--primary); margin-bottom: 1rem; font-size: 1.3rem; font-weight: 900; }
+        .control-group { margin-bottom: 1rem; }
+        .control-group label { display: block; font-weight: 800; margin-bottom: 0.5rem; color: #333; font-size: 1rem; }
+        .control-group select, .control-group input[type="range"] { width: 100%; padding: 0.7rem; border: 2px solid var(--gray); border-radius: 8px; font-size: 1rem; background: var(--white); transition: border-color 0.2s; font-weight: 700; }
+        .control-group select:focus, .control-group input:focus { outline: none; border-color: var(--primary); }
+        
+        /* Toggle Switch */
+        .toggle-switch { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; user-select: none; }
+        .toggle-switch input[type="checkbox"] { display: none; }
+        .toggle-slider { width: 50px; height: 26px; background: #ddd; border-radius: 26px; position: relative; transition: background 0.3s; }
+        .toggle-slider::after { content: ''; position: absolute; width: 22px; height: 22px; background: var(--white); border-radius: 50%; top: 2px; left: 2px; transition: transform 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .toggle-switch input:checked + .toggle-slider { background: var(--primary); }
+        .toggle-switch input:checked + .toggle-slider::after { transform: translateX(24px); }
+        
+        /* Map Elements */
+        .shop-marker { background: var(--white); border: 3px solid var(--primary); border-radius: 50%; width: 16px; height: 16px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        .shop-marker:hover { transform: scale(1.5); border-color: var(--secondary); z-index: 1000 !important; }
+        .shop-marker.deviation { border-color: var(--danger); background: #ffebee; }
+        .shop-tooltip { background: rgba(255,255,255,0.95); padding: 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 320px; font-size: 0.9rem; border: 1px solid var(--gray); }
+        .shop-tooltip h4 { color: var(--primary); margin-bottom: 0.5rem; font-weight: 600; }
+        .shop-tooltip p { color: #666; line-height: 1.5; }
+
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: var(--white); padding: 2.5rem; border-radius: 16px; width: 95%; max-width: 1600px; height: 95vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid var(--gray); }
+        .modal-title { font-size: 2rem; color: var(--text); font-weight: 900; }
+        .modal-close { background: none; border: none; font-size: 2.5rem; cursor: pointer; color: #999; padding: 0.5rem; line-height: 1; }
+        .modal-close:hover { color: #666; }
+        .modal-body { flex: 1; overflow-y: auto; }
+
+        /* Comparison Layout */
+        .comparison-layout { display: flex; gap: 2rem; flex: 1; }
+        .comparison-panel { flex: 1; overflow-y: auto; padding-right: 1rem; }
+        .stat-bar { margin-bottom: 1.5rem; }
+        .stat-label { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 1rem; font-weight: 600; cursor: pointer; padding: 0.5rem; border-radius: 6px; transition: background 0.2s; }
+        .stat-label:hover { background: #f8f9fa; }
+        .stat-bar-container { height: 12px; background: #f0f0f0; border-radius: 6px; position: relative; overflow: hidden; }
+        .stat-bar-fill { height: 100%; position: absolute; top: 0; left: 0; transition: width 0.4s ease; }
+        .stat-bar-shop { background: var(--info); z-index: 3; }
+        .stat-bar-city { background: #333; z-index: 2; opacity: 0.7; }
+        .stat-bar-local { background: var(--danger); z-index: 1; opacity: 0.7; }
+
+        .component-detail { background: #f8f9fa; padding: 1.5rem; border-radius: 12px; margin-top: 0.8rem; font-size: 0.9rem; border: 1px solid #eee; display: none; }
+        .component-item { display: flex; justify-content: space-between; margin-bottom: 0.8rem; padding: 0.5rem; background: var(--white); border-radius: 6px; }
+        .kernel-density-chart { margin-top: 1rem; height: 150px; }
+
+        /* Page Styles */
+        .page-content { padding: 2.5rem; height: 100%; overflow-y: auto; }
+        .page-header { margin-bottom: 2.5rem; }
+        .page-header h2 { font-size: 2.5rem; color: var(--text); font-weight: 900; }
+        .page-header p { font-size: 1.1rem; color: #666; margin-top: 0.8rem; font-weight: 700; }
+        .under-development { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 2.5rem; color: #999; font-weight: 900; }
+        
+        /* Charts */
+        .chart-container { width: 100%; height: 600px; margin: 2rem 0; position: relative; }
+        .radar-container { width: 100%; height: 500px; margin: 2rem 0; }
+        .dimension-controls { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .dimension-control { flex: 1; min-width: 200px; }
+        .chart-container canvas { font-weight: 700 !important; }
+        
+        /* Point Line Chart for Shop Details */
+        .point-line-chart { margin: 1rem 0; position: relative; height: 80px; }
+        .point-line { position: relative; height: 8px; background: linear-gradient(90deg, #f0f0f0 0%, #ddd 100%); border-radius: 4px; margin: 1rem 0; }
+        .point-marker { position: absolute; width: 16px; height: 16px; border-radius: 50%; top: -4px; cursor: pointer; transition: all 0.2s; z-index: 10; }
+        .point-marker.shop { background: var(--info); border: 3px solid var(--white); box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4); }
+        .point-marker.city { background: #333; border: 3px solid var(--white); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+        .point-marker.local { background: var(--danger); border: 3px solid var(--white); box-shadow: 0 2px 8px rgba(231, 76, 60, 0.4); }
+        .point-label { position: absolute; font-size: 0.75rem; font-weight: 900; white-space: nowrap; transform: translateX(-50%); padding: 3px 6px; border-radius: 3px; z-index: 20; }
+        .point-label.shop { background: var(--info); color: var(--white); top: -40px; }
+        .point-label.city { background: #333; color: var(--white); top: -25px; }
+        .point-label.local { background: var(--danger); color: var(--white); top: -55px; }
+
+        /* Buttons */
+        .btn { padding: 0.8rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; }
+        .btn-primary { background: var(--primary); color: var(--white); }
+        .btn-primary:hover { background: var(--secondary); transform: translateY(-2px); }
+        .btn-danger { background: var(--danger); color: var(--white); }
+        .btn-success { background: var(--success); color: var(--white); }
+
+        /* Loading & Download */
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 1.5rem; font-size: 1.8rem; color: var(--primary); font-weight: 600; }
+        .download-btn { position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 50%; box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.3s; z-index: 1000; border: none; }
+        .download-btn:hover { transform: scale(1.1); }
+        .download-btn svg { width: 28px; height: 28px; fill: var(--white); }
+
+        /* Special styles */
+        .heatmap-active .leaflet-marker-pane, .heatmap-active .leaflet-shadow-pane { display: none; }
+        .legend-gradient { width: 100%; height: 24px; border-radius: 6px; background: linear-gradient(90deg, #0000ff 0%, #00ff00 25%, #ffff00 50%, #ff8800 75%, #ff0000 100%); }
+        .legend-labels { display: flex; justify-content: space-between; font-size: 0.8rem; color: #666; margin-top: 0.4rem; }
+        
+        .franchise-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .franchise-card { background: var(--white); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .outlier-item { background: var(--white); padding: 1.5rem; margin-bottom: 1rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.3s; }
+        .outlier-item:hover { transform: translateY(-4px); box-shadow: 0 8px 16px rgba(0,0,0,0.15); }
+        
+        .variable-controls { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; }
+        .variable-tag { background: var(--gray); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
+        .variable-tag.active { background: var(--primary); color: var(--white); }
+        .variable-remove { background: var(--danger); color: var(--white); border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay" class="loading-overlay">
+        <svg width="60" height="60" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity=".25" fill="currentColor"/>
+            <path d="M10.72,19.9a8,8,0,0,1-6.5-9.79A7.77,7.77,0,0,1,10.4,4.16a8,8,0,0,1,9.49,6.52A1.54,1.54,0,0,0,21.38,12h.13a1.37,1.37,0,0,0,1.38-1.54,11,11,0,1,0-12.7,12.39A1.54,1.54,0,0,0,12,21.34h0A1.47,1.47,0,0,0,10.72,19.9Z" fill="currentColor">
+                <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/>
+            </path>
+        </svg>
+        <p>데이터를 불러오는 중입니다...</p>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>상권.shop</h1>
+                <p>AI 기반 소상공인 전략 분석</p>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-page="map-page">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <span>지도 분석</span>
+                </div>
+                <div class="nav-item" data-page="comparison-page">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 6l-9.5 9.5-5-5L1 18"></path><polyline points="17 6 23 6 23 12"></polyline>
+                    </svg>
+                    <span>지역 특성 비교</span>
+                </div>
+                <div class="nav-item" data-page="franchise-page">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                    <span>프랜차이즈 분석</span>
+                </div>
+                <div class="nav-item" data-page="typemap-page">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span>음식점 유형 지도</span>
+                </div>
+                <div class="nav-item" data-page="strategymap-page">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                    </svg>
+                    <span>가게별 전략 지도</span>
+                </div>
+                <hr style="margin: 1.5rem; border: none; border-top: 1px solid var(--gray);">
+                <div class="nav-item" data-page="opening-page">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20m-10-10h20"></path>
+                    </svg>
+                    <span>개업 전략</span>
+                </div>
+                <div class="nav-item" data-page="change-page">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="1 4 1 10 7 10"></polyline>
+                        <polyline points="23 20 23 14 17 14"></polyline>
+                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+                    </svg>
+                    <span>업종 변경 전략</span>
+                </div>
+                <div class="nav-item" data-page="closing-page">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    <span>폐업 전략</span>
+                </div>
+            </nav>
+        </div>
+        
+        <div class="content-area">
+            <!-- Feature 0 & 1: Combined Map and Heatmap Page -->
+            <div id="map-page" class="page active">
+                <div id="map"></div>
+            </div>
+            
+            <!-- Feature 2: Area Characteristics Comparison Page -->
+            <div id="comparison-page" class="page"></div>
+            
+            <!-- Feature 5: Franchise Analysis Page -->
+            <div id="franchise-page" class="page"></div>
+            
+            <!-- Feature 7: Restaurant Type Map Page -->
+            <div id="typemap-page" class="page"></div>
+            
+            <!-- Feature 8: Strategy Map Page -->
+            <div id="strategymap-page" class="page"></div>
+            
+            <!-- Features 9-11: Under Development Pages -->
+            <div id="opening-page" class="page"><div class="under-development">개발 중</div></div>
+            <div id="change-page" class="page"><div class="under-development">개발 중</div></div>
+            <div id="closing-page" class="page"><div class="under-development">개발 중</div></div>
+        </div>
+    </div>
+    
+    <!-- Feature 3 & 4: Shop Detail Modal -->
+    <div class="modal" id="shopModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="shopModalTitle"></h2>
+                <button class="modal-close" onclick="closeModal('shopModal')">&times;</button>
+            </div>
+            <div class="modal-body comparison-layout">
+                <div class="comparison-panel" id="shopDetailSection"></div>
+                <div class="comparison-panel" id="shopComparisonSection"></div>
+            </div>
+        </div>
+    </div>
+    
+    <button class="download-btn" onclick="downloadPDF()" title="분석 리포트 PDF 다운로드">
+        <svg viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+    </button>
+
+<script>
+// ==================== GLOBAL STATE ====================
+let allRestaurants = [];
+let filteredRestaurants = [];
+let stats = { city: {}, emd: {}, subcategory: {}, franchise: {} };
+let map, heatLayer = null, markerLayer = L.layerGroup();
+let currentPage = 'map-page', confidenceThreshold = 70;
+let charts = {};
+
+const GwangmyeongCenter = [37.4786, 126.8644];
+const loadingOverlay = document.getElementById('loadingOverlay');
+
+const variableLabels = {
+    'price_level': '가격 수준', 'price_value_for_money': '가성비',
+    'atmosphere_energy_level': '활기', 'atmosphere_formality': '격식',
+    'atmosphere_soundscape_and_music': '소음/음악', 'atmosphere_olfactory_experience': '향기 경험',
+    'atmosphere_thematic_coherence_and_immersion': '테마 몰입도', 'aesthetics_design_quality': '디자인 품질',
+    'cleanliness_and_hygiene': '청결도', 'comfort_physical': '물리적 편안함',
+    'social_group_size_suitability': '그룹 규모 적합성', 'social_occasion_intimacy': '사교적 친밀도',
+    'offering_quality_core': '핵심 품질', 'offering_variety_and_selection': '메뉴 다양성',
+    'offering_uniqueness_and_novelty': '메뉴 독특성', 'offering_customizability': '커스터마이징',
+    'offering_portion_or_quantity': '양/포션', 'operational_speed_and_efficiency': '운영 효율성',
+    'service_staff_friendliness': '직원 친절도', 'service_staff_attentiveness': '직원 세심함',
+    'service_staff_expertise': '직원 전문성', 'access_location_convenience': '위치 편의성',
+    'access_parking_availability': '주차 편의성', 'access_digital_presence_quality': '디지털 인지도',
+    'access_physical_accessibility': '물리적 접근성', 'reputation_consistency_and_reliability': '평판 신뢰도',
+    'clientele_family_friendliness': '가족 친화도',
+    'taste_spiciness': '매운맛', 'taste_sweetness': '단맛', 'taste_saltiness': '짠맛',
+    'taste_sourness': '신맛', 'taste_bitterness': '쓴맛', 'taste_umami': '감칠맛',
+    'texture_richness_fattiness': '식감/기름기', 'temperature_serving': '제공 온도',
+    'concept_healthiness_or_processing_level': '건강성', 'flavor_complexity_and_aromatics': '맛의 복잡성',
+    'food_alcohol_pairing_suitability': '주류 페어링', 'food_carbohydrate_density': '탄수화물 밀도',
+};
+
+// ==================== DATA LOADING & PARSING ====================
+async function loadAllData() {
+    loadingOverlay.style.display = 'flex';
+    try {
+        // Try to load real data first, fallback to mock data
+        let jsonlText = '', csvText = '';
+        try {
+            const jsonlResponse = await fetch('list.jsonl').catch(() => null);
+            const csvResponse = await fetch('data.csv').catch(() => null);
+            
+            if (jsonlResponse && jsonlResponse.ok) {
+                jsonlText = await jsonlResponse.text();
+            }
+            if (csvResponse && csvResponse.ok) {
+                csvText = await csvResponse.text();
+            }
+        } catch (e) {
+            console.log('CORS error or files not found, using mock data:', e.message);
+        }
+        
+        if (jsonlText && csvText && jsonlText.trim()) {
+            allRestaurants = parseRealData(jsonlText, csvText);
+            console.log('Loaded real data:', allRestaurants.length, 'restaurants');
+        } else {
+            console.log('Using mock data due to CORS or missing files');
+            allRestaurants = generateMockData();
+        }
+        
+        calculateAllStats();
+        initApp();
+        
+    } catch (error) {
+        console.error('Error loading data:', error);
+        allRestaurants = generateMockData();
+        calculateAllStats();
+        initApp();
+    } finally {
+        loadingOverlay.style.display = 'none';
+    }
+}
+
+function parseRealData(jsonlText, csvText) {
+    const supplementaryData = parseCSV(csvText);
+    const jsonlLines = jsonlText.trim().split('\n');
+    
+    return jsonlLines.map(line => {
+        try {
+            const data = JSON.parse(line);
+            const key = data.key;
+            let textPart = data.response.candidates[0].content.parts
+                .map(p => p.text).join('')
+                .replace(/^```json\n/, '').replace(/\n```$/, '');
+            
+            const parsed = JSON.parse(textPart);
+            const extra = supplementaryData[key] || {};
+            
+            const restaurant = {
+                ...parsed,
+                key: key,
+                name: key.split(' at ')[0],
+                address: key.split(' at ')[1],
+                lat: parseFloat(extra.lat) || (GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.05),
+                lng: parseFloat(extra.lng) || (GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.05),
+                subcategory: extra.subcategory || detectSubcategory(parsed),
+                emd: extra.emd_name || getRandomEmd(),
+                franchise: detectFranchise(key),
+            };
+            restaurant.avg_confidence = getAverageConfidence(restaurant);
+            return restaurant;
+        } catch(e) {
+            console.error("Error parsing line:", e);
+            return null;
+        }
+    }).filter(r => r && r.lat && r.lng && r.avg_confidence >= 70);
+}
+
+function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return {};
+    const header = lines[0].split(',').map(h => h.trim());
+    const dataMap = {};
+    for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',');
+        const entry = {};
+        header.forEach((h, j) => {
+            entry[h] = values[j] ? values[j].trim().replace(/"/g, '') : '';
+        });
+        if (entry.key) dataMap[entry.key] = entry;
+    }
+    return dataMap;
+}
+
+function generateMockData() {
+    const emds = ['광명동', '철산동', '하안동', '소하동', '학온동', '일직동', '노온사동'];
+    const subcategories = ['한식', '중식', '일식', '양식', '카페', '간식', '치킨', '피자', '분식', '술집'];
+    const franchises = ['스타벅스', '맥도날드', 'BBQ', '김밥천국', '이디야', '롯데리아', '버거킹', null, null, null];
+    const restaurants = [];
+    
+    emds.forEach(emd => {
+        const count = 30 + Math.floor(Math.random() * 70);
+        for (let i = 0; i < count; i++) {
+            const subcategory = subcategories[Math.floor(Math.random() * subcategories.length)];
+            const franchise = franchises[Math.floor(Math.random() * franchises.length)];
+            const restaurant = {
+                key: `${emd}${i}_restaurant at 경기도 광명시 ${emd} ${i+1}`,
+                name: `${emd} ${subcategory} ${i + 1}`,
+                address: `경기도 광명시 ${emd} ${i+1}번지`,
+                lat: GwangmyeongCenter[0] + (Math.random() - 0.5) * 0.05,
+                lng: GwangmyeongCenter[1] + (Math.random() - 0.5) * 0.05,
+                emd: emd,
+                subcategory: subcategory,
+                franchise: franchise,
+                universal_scores: generateMockScores(),
+                subspace_scores: generateMockSubspaceScores(),
+                latent_summary: `${emd}에 위치한 ${subcategory} 전문점으로, 지역 주민들에게 사랑받는 맛집입니다. 특색 있는 메뉴와 친절한 서비스로 유명합니다.`,
+                metadata: { data_completeness_report: { confidence_score: 60 + Math.random() * 40 } }
+            };
+            restaurant.avg_confidence = getAverageConfidence(restaurant);
+            restaurants.push(restaurant);
+        }
+    });
+    
+    return restaurants.filter(r => r.avg_confidence >= 70);
+}
+
+function generateMockScores() {
+    const scores = {};
+    Object.keys(variableLabels).forEach(key => {
+        scores[key] = {
+            components: [
+                { component_name: "주요 구성요소", point_score: 30 + Math.random() * 60, weight: 0.7 },
+                { component_name: "보조 구성요소", point_score: 20 + Math.random() * 70, weight: 0.3 }
+            ],
+            confidence_score: 60 + Math.random() * 40
+        };
+    });
+    return scores;
+}
+
+function generateMockSubspaceScores() {
+    return {
+        "Food & Beverage Taste": {
+            activation_confidence: 100,
+            taste_spiciness: {
+                components: [{ component_name: "매운맛 강도", point_score: Math.random() * 100, weight: 1.0 }],
+                confidence_score: 70 + Math.random() * 30
+            }
+        }
+    };
+}
+
+function detectSubcategory(data) {
+    const summary = data.latent_summary || '';
+    if (summary.includes('한식') || summary.includes('김치')) return '한식';
+    if (summary.includes('중식') || summary.includes('중국')) return '중식';
+    if (summary.includes('일식') || summary.includes('초밥')) return '일식';
+    if (summary.includes('양식') || summary.includes('파스타')) return '양식';
+    if (summary.includes('카페') || summary.includes('커피')) return '카페';
+    if (summary.includes('간식') || summary.includes('디저트')) return '간식';
+    return '한식';
+}
+
+function detectFranchise(key) {
+    const franchises = ['스타벅스', '맥도날드', 'BBQ', '김밥천국', '이디야', '롯데리아', '버거킹'];
+    const name = key.toLowerCase();
+    return franchises.find(f => name.includes(f.toLowerCase())) || null;
+}
+
+function getRandomEmd() {
+    const emds = ['광명동', '철산동', '하안동', '소하동', '학온동', '일직동', '노온사동'];
+    return emds[Math.floor(Math.random() * emds.length)];
+}
+
+// ==================== CORE FUNCTIONS ====================
+function getAverageConfidence(restaurant) {
+    const scores = restaurant.universal_scores || {};
+    const confidences = Object.values(scores).map(s => s.confidence_score || 0).filter(c => c > 0);
+    return confidences.length > 0 ? confidences.reduce((a, b) => a + b, 0) / confidences.length : 0;
+}
+
+function getScoreValue(restaurant, variable) {
+    const scoreData = (restaurant.universal_scores && restaurant.universal_scores[variable]) || 
+                      (restaurant.subspace_scores && restaurant.subspace_scores['Food & Beverage Taste'] && restaurant.subspace_scores['Food & Beverage Taste'][variable]);
+
+    if (!scoreData || !scoreData.components || scoreData.components.length === 0) return 0;
+    return scoreData.components.reduce((sum, c) => sum + (c.point_score * c.weight), 0);
+}
+
+function calculateAllStats() {
+    const vars = Object.keys(variableLabels);
+    
+    // City-wide stats
+    stats.city = {};
+    vars.forEach(v => {
+        const values = allRestaurants.map(r => getScoreValue(r, v));
+        stats.city[v] = { mean: values.reduce((a,b)=>a+b,0) / values.length };
+    });
+
+    // EMD stats
+    stats.emd = {};
+    const emds = [...new Set(allRestaurants.map(r => r.emd))];
+    emds.forEach(emdName => {
+        stats.emd[emdName] = {};
+        const emdRestaurants = allRestaurants.filter(r => r.emd === emdName);
+        vars.forEach(v => {
+            const values = emdRestaurants.map(r => getScoreValue(r, v));
+            stats.emd[emdName][v] = { mean: values.reduce((a,b)=>a+b,0) / values.length };
+        });
+    });
+    
+    // Subcategory stats
+    stats.subcategory = {};
+    const subcategories = [...new Set(allRestaurants.map(r => r.subcategory))];
+    subcategories.forEach(subcat => {
+        stats.subcategory[subcat] = {};
+        const subcatRestaurants = allRestaurants.filter(r => r.subcategory === subcat);
+        vars.forEach(v => {
+            const values = subcatRestaurants.map(r => getScoreValue(r, v));
+            stats.subcategory[subcat][v] = { mean: values.reduce((a,b)=>a+b,0) / values.length };
+        });
+    });
+
+    // Franchise stats
+    stats.franchise = {};
+    const franchises = [...new Set(allRestaurants.map(r => r.franchise).filter(f => f))];
+    franchises.forEach(franchise => {
+        stats.franchise[franchise] = {};
+        const franchiseRestaurants = allRestaurants.filter(r => r.franchise === franchise);
+        vars.forEach(v => {
+            const values = franchiseRestaurants.map(r => getScoreValue(r, v));
+            stats.franchise[franchise][v] = { mean: values.reduce((a,b)=>a+b,0) / values.length };
+        });
+    });
+}
+
+function isDeviation(restaurant) {
+    if (!restaurant.emd || !stats.emd[restaurant.emd]) return false;
+    const emdAvgs = stats.emd[restaurant.emd];
+    let totalDeviation = 0, count = 0;
+    for (const variable in emdAvgs) {
+        const shopScore = getScoreValue(restaurant, variable);
+        const emdScore = emdAvgs[variable].mean;
+        if(emdScore > 0) {
+             totalDeviation += Math.abs(shopScore - emdScore) / emdScore;
+             count++;
+        }
+    }
+    return (count > 0) && (totalDeviation / count > 0.25);
+}
+
+// ==================== INITIALIZATION ====================
+function initApp() {
+    initMap();
+    setupEventListeners();
+    navigateTo('map-page');
+}
+
+function initMap() {
+    map = L.map('map', { center: GwangmyeongCenter, zoom: 13, scrollWheelZoom: true });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    }).addTo(map);
+    markerLayer.addTo(map);
+}
+
+function setupEventListeners() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => navigateTo(item.dataset.page));
+    });
+}
+
+// ==================== PAGE NAVIGATION ====================
+function navigateTo(pageId) {
+    currentPage = pageId;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    
+    document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.toggle('active', n.dataset.page === pageId);
+    });
+    
+    clearMapVisuals();
+    removeExistingControls();
+
+    switch (pageId) {
+        case 'map-page': renderMapPage(); break;
+        case 'comparison-page': renderComparisonPage(); break;
+        case 'franchise-page': renderFranchisePage(); break;
+        case 'typemap-page': renderTypeMapPage(); break;
+        case 'strategymap-page': renderStrategyMapPage(); break;
+    }
+}
+
+function removeExistingControls() {
+    document.querySelectorAll('.control-panel').forEach(panel => panel.remove());
+}
+
+function clearMapVisuals() {
+    markerLayer.clearLayers();
+    if (heatLayer) {
+        map.removeLayer(heatLayer);
+        heatLayer = null;
+    }
+    document.body.classList.remove('heatmap-active');
+}
+
+// ==================== FEATURE 0 & 1: COMBINED MAP AND HEATMAP PAGE ====================
+function renderMapPage() {
+    if (!document.getElementById('map').parentElement.classList.contains('active')) {
+        document.getElementById('map-page').appendChild(document.getElementById('map'));
+    }
+    
+    const controlPanel = createControlPanel();
+    controlPanel.innerHTML = `
+        <h3>🗺️ 지도 분석</h3>
+        <div class="control-group">
+            <label for="heatmapVariable" style="font-weight: 800;">히트맵 변수</label>
+            <select id="heatmapVariable" onchange="updateMapVisualization()" style="font-weight: 700;">
+                ${Object.entries(variableLabels).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="mapCategoryFilter" style="font-weight: 800;">업종 필터</label>
+            <select id="mapCategoryFilter" style="font-weight: 700;">
+                <option value="all">전체</option>
+                ${[...new Set(allRestaurants.map(r => r.subcategory))].sort().map(s => `<option value="${s}">${s}</option>`).join('')}
+            </select>
+        </div>
+        <div class="control-group">
+            <label class="toggle-switch">
+                <input type="checkbox" id="deviationToggle">
+                <span class="toggle-slider"></span>
+                <span style="font-weight: 800;">틈새 시장 표시</span>
+            </label>
+        </div>
+        <div style="margin-top: 1.5rem;">
+            <div style="font-weight: 800; margin-bottom: 0.5rem; color: var(--primary);">히트맵 범위</div>
+            <div class="legend-gradient"></div>
+            <div class="legend-labels"><span style="font-weight: 700;">낮음</span><span style="font-weight: 700;">높음</span></div>
+        </div>
+    `;
+    document.getElementById('map-page').appendChild(controlPanel);
+    
+    setupMapControls();
+    // Initialize filteredRestaurants first, then show both markers and heatmap
+    setTimeout(() => {
+        applyMapFilters();
+    }, 100);
+}
+
+function updateMapVisualization() {
+    // Show both markers and heatmap simultaneously
+    renderMapMarkers();
+    updateHeatmap();
+}
+
+function setupMapControls() {
+    const categoryFilter = document.getElementById('mapCategoryFilter');
+    const deviationToggle = document.getElementById('deviationToggle');
+    
+    categoryFilter.addEventListener('change', applyMapFilters);
+    deviationToggle.addEventListener('change', applyMapFilters);
+}
+
+function applyMapFilters() {
+    const categoryFilter = document.getElementById('mapCategoryFilter');
+    const deviationToggle = document.getElementById('deviationToggle');
+    
+    if (!categoryFilter) return;
+    
+    const selectedCategory = categoryFilter.value;
+    const showDeviations = deviationToggle.checked;
+    
+    filteredRestaurants = allRestaurants.filter(r => {
+        const confidencePass = r.avg_confidence >= 70; // Fixed at 70
+        const categoryPass = selectedCategory === 'all' || r.subcategory === selectedCategory;
+        return confidencePass && categoryPass;
+    });
+
+    if (showDeviations) {
+        filteredRestaurants = filteredRestaurants.filter(r => isDeviation(r));
+    }
+
+    updateMapVisualization();
+}
+
+function renderMapMarkers() {
+    markerLayer.clearLayers();
+    const sampleSize = 200;
+    const sampled = filteredRestaurants.length > sampleSize 
+        ? [...filteredRestaurants].sort(() => 0.5 - Math.random()).slice(0, sampleSize)
+        : filteredRestaurants;
+
+    sampled.forEach(r => {
+        const markerIcon = L.divIcon({
+            className: `shop-marker ${isDeviation(r) ? 'deviation' : ''}`,
+            iconSize: [16, 16]
+        });
+        const marker = L.marker([r.lat, r.lng], { icon: markerIcon })
+            .bindTooltip(`<h4>${r.name}</h4><p>${r.latent_summary || '상세 정보 없음'}</p>`, {
+                className: 'shop-tooltip',
+                offset: [0, -10],
+                permanent: false,
+                sticky: true
+            })
+            .on('click', () => showShopDetailModal(r));
+        markerLayer.addLayer(marker);
+    });
+}
+
+function updateHeatmap() {
+    if (heatLayer) {
+        map.removeLayer(heatLayer);
+        heatLayer = null;
+    }
+    
+    const variable = document.getElementById('heatmapVariable')?.value || 'price_level';
+    const category = document.getElementById('mapCategoryFilter')?.value || 'all';
+    
+    const data = allRestaurants.filter(r => {
+        return (r.avg_confidence >= 70) && (category === 'all' || r.subcategory === category);
+    }).map(r => [r.lat, r.lng, Math.min(getScoreValue(r, variable) / 100, 1)]);
+
+    if (data.length > 0) {
+        heatLayer = L.heatLayer(data, {
+            radius: 20,
+            blur: 15,
+            maxZoom: 17,
+            gradient: {0.2: 'blue', 0.4: 'cyan', 0.6: 'lime', 0.8: 'yellow', 1.0: 'red'}
+        }).addTo(map);
+        // Don't hide markers - we want both visible
+    }
+}
+
+// ==================== FEATURE 2: EMD COMPARISON ====================
+function renderComparisonPage() {
+    const page = document.getElementById('comparison-page');
+    const emds = Object.keys(stats.emd);
+    page.innerHTML = `
+        <div class="page-content">
+            <div class="page-header">
+                <h2>📊 읍면동 비교 분석</h2>
+                <p>두 읍면동을 선택하여 주요 상권 지표를 비교 분석합니다.</p>
+            </div>
+            <div class="dimension-controls">
+                <div class="control-group">
+                    <label>비교 대상 A (빨간색)</label>
+                    <select id="emdA">${emds.map(e => `<option value="${e}">${e}</option>`).join('')}</select>
+                </div>
+                 <div class="control-group">
+                    <label>비교 대상 B (파란색)</label>
+                    <select id="emdB">${emds.map((e,i) => `<option value="${e}" ${i===1 ? 'selected':''}>${e}</option>`).join('')}</select>
+                </div>
+            </div>
+            <div id="emdComparisonContent">
+                <div id="variableControls" class="variable-controls"></div>
+                <div id="emdComparisonChart" class="chart-container"><canvas id="comparisonCanvas"></canvas></div>
+            </div>
+        </div>`;
+    
+    setupEmdComparison();
+}
+
+function setupEmdComparison() {
+    const emdASelect = document.getElementById('emdA');
+    const emdBSelect = document.getElementById('emdB');
+    let selectedVariables = ['price_level', 'offering_quality_core', 'cleanliness_and_hygiene', 'service_staff_friendliness', 'atmosphere_formality'];
+    
+    function updateComparison() {
+        renderEmdVariableControls(selectedVariables);
+        renderEmdComparisonChart(emdASelect.value, emdBSelect.value, selectedVariables);
+    }
+    
+    function renderEmdVariableControls(vars) {
+        const container = document.getElementById('variableControls');
+        container.innerHTML = vars.map(v => `
+            <div class="variable-tag active">
+                <span>${variableLabels[v]}</span>
+                <button class="variable-remove" onclick="removeVariable('${v}')">&times;</button>
+            </div>
+        `).join('') + `
+            <select id="addVariableSelect" onchange="addVariable()">
+                <option value="">+ 변수 추가</option>
+                ${Object.entries(variableLabels)
+                    .filter(([k]) => !vars.includes(k))
+                    .map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}
+            </select>
+        `;
+    }
+    
+    window.removeVariable = (variable) => {
+        selectedVariables = selectedVariables.filter(v => v !== variable);
+        updateComparison();
+    };
+    
+    window.addVariable = () => {
+        const select = document.getElementById('addVariableSelect');
+        if (select.value && !selectedVariables.includes(select.value)) {
+            selectedVariables.push(select.value);
+            updateComparison();
+        }
+    };
+    
+    emdASelect.addEventListener('change', updateComparison);
+    emdBSelect.addEventListener('change', updateComparison);
+    updateComparison();
+}
+
+function renderEmdComparisonChart(emdA, emdB, variables) {
+    if (!emdA || !emdB || emdA === emdB) return;
+    
+    const dataA = stats.emd[emdA];
+    const dataB = stats.emd[emdB];
+    
+    const ctx = document.getElementById('comparisonCanvas').getContext('2d');
+    if (charts.comparison) charts.comparison.destroy();
+    
+    charts.comparison = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: variables.map(v => variableLabels[v]),
+            datasets: [
+                {
+                    label: emdA,
+                    data: variables.map(v => dataA[v] ? dataA[v].mean : 0),
+                    backgroundColor: 'rgba(231, 76, 60, 0.7)',
+                    borderColor: 'rgba(231, 76, 60, 1)',
+                    borderWidth: 2
+                },
+                {
+                    label: emdB,
+                    data: variables.map(v => dataB[v] ? dataB[v].mean : 0),
+                    backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                    borderColor: 'rgba(52, 152, 219, 1)',
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            scales: { 
+                x: { 
+                    beginAtZero: true, 
+                    max: 100,
+                    ticks: { 
+                        font: { size: 14, weight: 'bold' },
+                        color: '#333'
+                    },
+                    title: {
+                        display: true,
+                        text: '점수',
+                        font: { size: 16, weight: 'bold' },
+                        color: '#333'
+                    }
+                },
+                y: {
+                    ticks: { 
+                        font: { size: 12, weight: 'bold' },
+                        color: '#333'
+                    }
+                }
+            },
+            plugins: {
+                legend: { 
+                    position: 'top',
+                    labels: {
+                        font: { size: 14, weight: 'bold' }
+                    }
+                },
+                tooltip: {
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 12, weight: 'normal' },
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.x.toFixed(1)}점`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ==================== FEATURE 3 & 4: SHOP DETAIL & COMPARISON ====================
+function showShopDetailModal(shop) {
+    document.getElementById('shopModalTitle').textContent = `${shop.name} 상세 분석`;
+    renderShopDetail(shop);
+    renderShopComparison(shop);
+    document.getElementById('shopModal').style.display = 'flex';
+}
+
+function renderShopDetail(shop) {
+    const container = document.getElementById('shopDetailSection');
+    const cityAvgs = stats.city;
+    const localAvgs = shop.emd ? stats.emd[shop.emd] : {};
+    
+    let selectedVariables = ['price_level', 'offering_quality_core', 'taste_spiciness', 'cleanliness_and_hygiene', 'service_staff_friendliness'];
+    
+    function updateVariableDisplay() {
+        const variableList = document.getElementById('variableList');
+        variableList.innerHTML = selectedVariables.map(v => {
+            const shopScore = getScoreValue(shop, v);
+            const cityScore = cityAvgs[v] ? cityAvgs[v].mean : 0;
+            const localScore = localAvgs[v] ? localAvgs[v].mean : 0;
+            const components = (shop.universal_scores[v] || shop.subspace_scores?.['Food & Beverage Taste']?.[v])?.components || [];
+            
+            return `
+            <div class="variable-section" style="margin-bottom: 1rem; border: 1px solid var(--gray); border-radius: 8px; padding: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h4 style="font-weight: 900; font-size: 1rem; color: var(--primary);">${variableLabels[v]}</h4>
+                    <button class="variable-remove" onclick="removeVariable('${v}')" style="background: var(--danger); color: white; border: none; border-radius: 3px; width: 20px; height: 20px; cursor: pointer; font-size: 0.8rem; font-weight: 900;">−</button>
+                </div>
+                <div class="point-line-chart">
+                    <div class="point-line">
+                        <div class="point-marker city" style="left: ${cityScore}%;" onmouseover="showKernelDensity('${v}', 'city')" onmouseout="hideKernelDensity()">
+                            <div class="point-label city">광명시 평균</div>
+                        </div>
+                        <div class="point-marker local" style="left: ${localScore}%;" onmouseover="showKernelDensity('${v}', 'local')" onmouseout="hideKernelDensity()">
+                            <div class="point-label local">${shop.emd} 평균</div>
+                        </div>
+                        <div class="point-marker shop" style="left: ${shopScore}%;" onmouseover="showKernelDensity('${v}', 'shop')" onmouseout="hideKernelDensity()">
+                            <div class="point-label shop">${shop.name}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.7rem; color: #666; font-weight: 700;">
+                        <span>0</span><span>25</span><span>50</span><span>75</span><span>100</span>
+                    </div>
+                </div>
+                <div class="component-detail" style="margin-top: 0.5rem; font-size: 0.8rem;">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.5rem;">
+                        <div>
+                            ${components.map(c => `
+                                <div style="display: flex; justify-content: space-between; margin: 0.3rem 0; padding: 0.3rem; background: var(--bg); border-radius: 4px;">
+                                   <span style="font-weight: 800;">${c.component_name}</span>
+                                   <span style="color: var(--primary); font-weight: 800;">${c.point_score.toFixed(1)}점 (${(c.weight * 100).toFixed(0)}%)</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="kernel-density-chart">
+                            <canvas id="kde-${v}" width="150" height="80"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+        }).join('');
+        
+        // Redraw kernel density plots
+        selectedVariables.forEach(v => {
+            const components = (shop.universal_scores[v] || shop.subspace_scores?.['Food & Beverage Taste']?.[v])?.components;
+            if (components) {
+                setTimeout(() => drawKernelDensity(`kde-${v}`, components), 100);
+            }
+        });
+        
+        // Update add variable dropdown
+        const availableVars = Object.keys(variableLabels).filter(v => !selectedVariables.includes(v));
+        const addDropdown = document.getElementById('addVariableDropdown');
+        addDropdown.innerHTML = `<option value="">+ 변수 추가</option>` + 
+            availableVars.map(v => `<option value="${v}">${variableLabels[v]}</option>`).join('');
+    }
+    
+    container.innerHTML = `
+        <h3 style="font-weight: 900; margin-bottom: 0.5rem;">🏪 가게 분석</h3>
+        <p style="margin-bottom: 0.3rem; font-weight: 800;"><strong>${shop.address}</strong></p>
+        <p style="margin-bottom: 1rem; font-style: italic; color: #666; font-size: 0.9rem;">${shop.latent_summary}</p>
+        
+        <select id="addVariableDropdown" onchange="addVariable()" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; border: 2px solid var(--success); border-radius: 6px; font-weight: 800; background: var(--success); color: white;">
+            <option value="">+ 변수 추가</option>
+        </select>
+        
+        <div style="margin-bottom: 1rem; padding: 0.7rem; background: #f8f9fa; border-radius: 6px; font-size: 0.85rem;">
+            <p style="font-weight: 800; margin-bottom: 0.3rem;">다른 요인들을 확인하려면 <span style="color: var(--danger); font-weight: 900;">−</span>를 클릭하세요</p>
+            <small style="color: #666; font-weight: 700;">마커에 마우스를 올리면 상세 분포를 확인할 수 있습니다.</small>
+        </div>
+        
+        <div id="variableList"></div>
+        <div id="kernelHoverInfo" style="position: fixed; background: rgba(0,0,0,0.8); color: white; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; pointer-events: none; z-index: 9999; display: none; font-weight: 700;"></div>
+    `;
+    
+    window.removeVariable = (variable) => {
+        selectedVariables = selectedVariables.filter(v => v !== variable);
+        updateVariableDisplay();
+        
+        // Update instruction text
+        const instruction = container.querySelector('p');
+        if (selectedVariables.length > 0) {
+            instruction.innerHTML = '다른 요인들을 확인하려면 <span style="color: var(--danger); font-weight: 900;">−</span>를 클릭하세요';
+        } else {
+            instruction.innerHTML = '변수를 추가하려면 <span style="color: var(--success); font-weight: 900;">+</span> 드롭다운을 클릭하세요';
+        }
+    };
+    
+    window.addVariable = () => {
+        const dropdown = document.getElementById('addVariableDropdown');
+        if (dropdown.value && !selectedVariables.includes(dropdown.value)) {
+            selectedVariables.unshift(dropdown.value); // Add to beginning instead of end
+            updateVariableDisplay();
+            dropdown.value = '';
+        }
+    };
+    
+    window.showKernelDensity = (variable, type) => {
+        const hoverInfo = document.getElementById('kernelHoverInfo');
+        const components = (shop.universal_scores[variable] || shop.subspace_scores?.['Food & Beverage Taste']?.[variable])?.components || [];
+        
+        if (type === 'shop' && components.length > 0) {
+            hoverInfo.innerHTML = `
+                <strong>${variableLabels[variable]} 구성요소:</strong><br>
+                ${components.map(c => `${c.component_name}: ${c.point_score.toFixed(1)}점 (${(c.weight * 100).toFixed(0)}%)`).join('<br>')}
+            `;
+            hoverInfo.style.display = 'block';
+            
+            document.addEventListener('mousemove', (e) => {
+                hoverInfo.style.left = e.pageX + 10 + 'px';
+                hoverInfo.style.top = e.pageY + 10 + 'px';
+            });
+        }
+    };
+    
+    window.hideKernelDensity = () => {
+        document.getElementById('kernelHoverInfo').style.display = 'none';
+    };
+    
+    updateVariableDisplay();
+}
+
+function renderShopComparison(shop) {
+    const container = document.getElementById('shopComparisonSection');
+    container.innerHTML = `
+        <h3>⚔️ 경쟁 가게와 비교</h3>
+        <button id="compareBtn" class="btn btn-primary">새로운 가게와 비교하기</button>
+        <div id="radarContainer" class="radar-container" style="display:none;">
+            <canvas id="radarChart"></canvas>
+        </div>
+        <p id="comparisonInstructions">버튼을 눌러서 이 지역의 다른 가게와 비교해보세요.</p>
+    `;
+
+    document.getElementById('compareBtn').onclick = () => {
+        const potentialCompetitors = allRestaurants.filter(r => 
+            r.key !== shop.key && 
+            r.emd === shop.emd && 
+            r.avg_confidence >= 70
+        );
+        if (potentialCompetitors.length > 0) {
+            const competitor = potentialCompetitors[Math.floor(Math.random() * potentialCompetitors.length)];
+            document.getElementById('radarContainer').style.display = 'block';
+            document.getElementById('comparisonInstructions').style.display = 'none';
+            drawRadarChart(shop, competitor);
+        } else {
+            document.getElementById('comparisonInstructions').textContent = '이 지역에 비교할 다른 가게가 없습니다.';
+        }
+    };
+}
+
+function drawRadarChart(shop1, shop2) {
+    if (charts.radar) charts.radar.destroy();
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    const subcatAvg = stats.subcategory[shop1.subcategory] || {};
+
+    const radarLabels = ['가격', '품질', '독특성', '청결도', '친절도', '분위기'];
+    const radarVars = ['price_level', 'offering_quality_core', 'offering_uniqueness_and_novelty', 'cleanliness_and_hygiene', 'service_staff_friendliness', 'atmosphere_formality'];
+
+    charts.radar = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: radarLabels,
+            datasets: [
+                {
+                    label: shop1.name,
+                    data: radarVars.map(v => getScoreValue(shop1, v)),
+                    fill: true,
+                    backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                    borderColor: 'rgb(52, 152, 219)',
+                    pointBackgroundColor: 'rgb(52, 152, 219)',
+                    borderWidth: 3,
+                    pointRadius: 6
+                },
+                {
+                    label: shop2.name,
+                    data: radarVars.map(v => getScoreValue(shop2, v)),
+                    fill: true,
+                    backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                    borderColor: 'rgb(231, 76, 60)',
+                    pointBackgroundColor: 'rgb(231, 76, 60)',
+                    borderWidth: 3,
+                    pointRadius: 6
+                },
+                {
+                    label: `${shop1.subcategory} 평균`,
+                    data: radarVars.map(v => subcatAvg[v] ? subcatAvg[v].mean : 0),
+                    fill: false,
+                    borderColor: 'rgba(50, 50, 50, 0.8)',
+                    pointBackgroundColor: 'rgba(50, 50, 50, 0.8)',
+                    borderDash: [5, 5],
+                    borderWidth: 3,
+                    pointRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { 
+                r: { 
+                    beginAtZero: true, 
+                    max: 100,
+                    ticks: { 
+                        stepSize: 20,
+                        font: { size: 12, weight: 'bold' },
+                        color: '#333'
+                    },
+                    pointLabels: {
+                        font: { size: 14, weight: 'bold' },
+                        color: '#333'
+                    },
+                    grid: {
+                        color: '#ddd'
+                    },
+                    angleLines: {
+                        color: '#ddd'
+                    }
+                } 
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        font: { size: 12, weight: 'bold' }
+                    }
+                },
+                tooltip: {
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 12, weight: 'normal' }
+                }
+            }
+        }
+    });
+}
+
+// ==================== FEATURE 5: FRANCHISE ANALYSIS ====================
+function renderFranchisePage() {
+    const page = document.getElementById('franchise-page');
+    const franchises = Object.keys(stats.franchise);
+    
+    page.innerHTML = `
+        <div class="page-content">
+            <div class="page-header">
+                <h2>🏢 프랜차이즈 분석</h2>
+                <p>프랜차이즈별 매장 현황과 특이점을 분석합니다.</p>
+            </div>
+            <div class="control-group">
+                <label for="franchiseSelect">프랜차이즈 선택</label>
+                <select id="franchiseSelect">
+                    <option value="">프랜차이즈를 선택하세요</option>
+                    ${franchises.map(f => `<option value="${f}">${f}</option>`).join('')}
+                </select>
+            </div>
+            <div id="franchiseContent"></div>
+        </div>
+    `;
+    
+    document.getElementById('franchiseSelect').addEventListener('change', (e) => {
+        if (e.target.value) updateFranchiseAnalysis(e.target.value);
+    });
+}
+
+function updateFranchiseAnalysis(franchise) {
+    const franchiseShops = allRestaurants.filter(r => r.franchise === franchise);
+    if (franchiseShops.length === 0) {
+        document.getElementById('franchiseContent').innerHTML = '<p>해당 프랜차이즈 데이터가 없습니다.</p>';
+        return;
+    }
+    
+    const franchiseAvg = stats.franchise[franchise];
+    const outliers = franchiseShops.map(shop => {
+        const deviations = Object.keys(variableLabels).map(variable => {
+            const shopValue = getScoreValue(shop, variable);
+            const avgValue = franchiseAvg[variable] ? franchiseAvg[variable].mean : 0;
+            return {
+                variable: variable,
+                deviation: Math.abs(shopValue - avgValue),
+                value: shopValue,
+                avg: avgValue
+            };
+        }).sort((a, b) => b.deviation - a.deviation);
+        
+        return { shop: shop, maxDeviation: deviations[0] };
+    }).sort((a, b) => b.maxDeviation.deviation - a.maxDeviation.deviation);
+    
+    const content = document.getElementById('franchiseContent');
+    content.innerHTML = `
+        <div class="comparison-layout">
+            <div class="comparison-panel">
+                <h3>🎯 가장 차별화된 매장</h3>
+                <div style="max-height: 600px; overflow-y: auto;">
+                    ${outliers.slice(0, 8).map(o => `
+                        <div class="outlier-item" onclick="showFranchiseComparison('${o.shop.key}', '${franchise}')">
+                            <h4>${o.shop.name}</h4>
+                            <p style="color: #666; margin: 0.5rem 0;">${o.shop.address}</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span><strong>${variableLabels[o.maxDeviation.variable]}</strong></span>
+                                <span style="color: var(--danger); font-weight: 600;">
+                                    ${o.maxDeviation.value.toFixed(1)}점 
+                                    (평균: ${o.maxDeviation.avg.toFixed(1)}점)
+                                </span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="comparison-panel" id="franchiseComparison">
+                <p style="text-align: center; color: #666; margin-top: 2rem;">매장을 선택하여 상세 비교를 확인하세요.</p>
+            </div>
+        </div>
+    `;
+}
+
+window.showFranchiseComparison = (shopKey, franchise) => {
+    const shop = allRestaurants.find(r => r.key === shopKey);
+    const franchiseAvg = stats.franchise[franchise];
+    
+    const container = document.getElementById('franchiseComparison');
+    const varsToDisplay = ['price_level', 'offering_quality_core', 'cleanliness_and_hygiene', 'service_staff_friendliness', 'atmosphere_formality', 'operational_speed_and_efficiency'];
+    
+    container.innerHTML = `
+        <h3>📈 프랜차이즈 평균과 비교</h3>
+        <h4>${shop.name}</h4>
+        <p style="margin-bottom: 1.5rem; color: #666;">${shop.address}</p>
+        <div style="margin-bottom: 1rem;">
+            <small style="color: #666;">
+                <span style="color: var(--info);">■</span> ${shop.name} &nbsp;
+                <span style="color: #333;">■</span> ${franchise} 평균
+            </small>
+        </div>
+    ` + varsToDisplay.map(v => {
+        const shopScore = getScoreValue(shop, v);
+        const franchiseScore = franchiseAvg[v] ? franchiseAvg[v].mean : 0;
+        const diff = shopScore - franchiseScore;
+        return `
+        <div class="stat-bar">
+            <div class="stat-label">
+                <span>${variableLabels[v]}</span>
+                <span style="color: ${diff > 0 ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">
+                    ${diff > 0 ? '+' : ''}${diff.toFixed(1)}
+                </span>
+            </div>
+            <div class="stat-bar-container">
+                <div class="stat-bar-fill stat-bar-city" style="width: ${franchiseScore}%;"></div>
+                <div class="stat-bar-fill stat-bar-shop" style="width: ${shopScore}%;"></div>
+            </div>
+        </div>
+        `;
+    }).join('');
+};
+
+// ==================== FEATURE 7: RESTAURANT TYPE MAP ====================
+function renderTypeMapPage() {
+    const page = document.getElementById('typemap-page');
+    page.innerHTML = `
+        <div class="page-content">
+            <div class="page-header">
+                <h2>🗺️ 음식점 유형 지도</h2>
+                <p>각 업종의 특성을 2차원 지도로 시각화하여 유사성을 분석합니다.</p>
+            </div>
+            <div class="dimension-controls">
+                <div class="dimension-control">
+                    <label>X축 변수</label>
+                    <select id="typeMapX">
+                        ${Object.entries(variableLabels).map(([k,v]) => 
+                            `<option value="${k}" ${k === 'taste_spiciness' ? 'selected' : ''}>${v}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="dimension-control">
+                    <label>Y축 변수</label>
+                    <select id="typeMapY">
+                        ${Object.entries(variableLabels).map(([k,v]) => 
+                            `<option value="${k}" ${k === 'price_level' ? 'selected' : ''}>${v}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="typeMapChart"></canvas>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('typeMapX').addEventListener('change', updateTypeMap);
+    document.getElementById('typeMapY').addEventListener('change', updateTypeMap);
+    updateTypeMap();
+}
+
+function updateTypeMap() {
+    const xVar = document.getElementById('typeMapX').value;
+    const yVar = document.getElementById('typeMapY').value;
+    
+    const subcategoryData = {};
+    const subcategories = [...new Set(allRestaurants.map(r => r.subcategory))];
+    
+    subcategories.forEach(subcategory => {
+        const subcatRestaurants = allRestaurants.filter(r => r.subcategory === subcategory);
+        if (subcatRestaurants.length > 0) {
+            const xValues = subcatRestaurants.map(r => getScoreValue(r, xVar));
+            const yValues = subcatRestaurants.map(r => getScoreValue(r, yVar));
+            
+            subcategoryData[subcategory] = {
+                x: xValues.reduce((a, b) => a + b, 0) / xValues.length,
+                y: yValues.reduce((a, b) => a + b, 0) / yValues.length,
+                count: subcatRestaurants.length
+            };
+        }
+    });
+    
+    const ctx = document.getElementById('typeMapChart').getContext('2d');
+    if (charts.typeMap) charts.typeMap.destroy();
+    
+    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'];
+    
+    charts.typeMap = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: Object.entries(subcategoryData).map(([subcategory, data], index) => ({
+                label: `${subcategory} (${data.count}개)`,
+                data: [{x: data.x, y: data.y}],
+                backgroundColor: colors[index % colors.length],
+                borderColor: colors[index % colors.length],
+                borderWidth: 2,
+                pointRadius: Math.sqrt(data.count) * 2 + 5,
+                pointHoverRadius: Math.sqrt(data.count) * 2 + 8
+            }))
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { 
+                        display: true, 
+                        text: variableLabels[xVar],
+                        font: { size: 16, weight: 'bold' },
+                        color: '#333'
+                    },
+                    ticks: { 
+                        font: { size: 14, weight: 'bold' },
+                        color: '#333'
+                    },
+                    min: 0, max: 100
+                },
+                y: {
+                    title: { 
+                        display: true, 
+                        text: variableLabels[yVar],
+                        font: { size: 16, weight: 'bold' },
+                        color: '#333'
+                    },
+                    ticks: { 
+                        font: { size: 14, weight: 'bold' },
+                        color: '#333'
+                    },
+                    min: 0, max: 100
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        font: { size: 12, weight: 'bold' }
+                    }
+                },
+                tooltip: {
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 12, weight: 'normal' },
+                    callbacks: {
+                        label: function(context) {
+                            const subcategory = context.dataset.label.split(' (')[0];
+                            return `${subcategory}: (${context.parsed.x.toFixed(1)}, ${context.parsed.y.toFixed(1)})`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ==================== FEATURE 8: STRATEGY MAP ====================
+function renderStrategyMapPage() {
+    const page = document.getElementById('strategymap-page');
+    const emds = Object.keys(stats.emd);
+    const randomEmd = emds[Math.floor(Math.random() * emds.length)];
+    
+    page.innerHTML = `
+        <div class="page-content">
+            <div class="page-header">
+                <h2>🎯 가게별 전략 지도</h2>
+                <p>선택한 지역의 가게들을 변수별로 시각화하여 포지셔닝을 분석합니다.</p>
+            </div>
+            <div class="dimension-controls">
+                <div class="dimension-control">
+                    <label style="font-weight: 700;">읍면동 선택</label>
+                    <select id="strategyEmd" style="font-weight: 600;">
+                        ${emds.map(e => `<option value="${e}" ${e === randomEmd ? 'selected' : ''}>${e}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="dimension-control">
+                    <label style="font-weight: 700;">X축 변수</label>
+                    <select id="strategyX" style="font-weight: 600;">
+                        ${Object.entries(variableLabels).map(([k,v]) => 
+                            `<option value="${k}" ${k === 'price_level' ? 'selected' : ''}>${v}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="dimension-control">
+                    <label style="font-weight: 700;">Y축 변수</label>
+                    <select id="strategyY" style="font-weight: 600;">
+                        ${Object.entries(variableLabels).map(([k,v]) => 
+                            `<option value="${k}" ${k === 'offering_quality_core' ? 'selected' : ''}>${v}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="strategyChart"></canvas>
+            </div>
+            <div id="strategyHoverInfo" style="margin-top: 2rem; padding: 1.5rem; background: var(--bg); border-radius: 12px; min-height: 100px;"></div>
+        </div>
+    `;
+    
+    document.getElementById('strategyEmd').addEventListener('change', updateStrategyMap);
+    document.getElementById('strategyX').addEventListener('change', updateStrategyMap);
+    document.getElementById('strategyY').addEventListener('change', updateStrategyMap);
+    
+    // Show content immediately with random area
+    setTimeout(updateStrategyMap, 100);
+}
+
+function updateStrategyMap() {
+    const emd = document.getElementById('strategyEmd').value;
+    if (!emd) return;
+    
+    const xVar = document.getElementById('strategyX').value;
+    const yVar = document.getElementById('strategyY').value;
+    
+    const emdRestaurants = allRestaurants
+        .filter(r => r.emd === emd && r.avg_confidence >= 80)
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 40);
+    
+    const ctx = document.getElementById('strategyChart').getContext('2d');
+    if (charts.strategy) charts.strategy.destroy();
+    
+    charts.strategy = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: '가게',
+                data: emdRestaurants.map(r => ({
+                    x: getScoreValue(r, xVar),
+                    y: getScoreValue(r, yVar),
+                    restaurant: r
+                })),
+                backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                borderColor: 'rgba(102, 126, 234, 1)',
+                borderWidth: 2,
+                pointRadius: 8,
+                pointHoverRadius: 12
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { 
+                        display: true, 
+                        text: variableLabels[xVar],
+                        font: { size: 16, weight: 'bold' },
+                        color: '#333'
+                    },
+                    ticks: { 
+                        font: { size: 14, weight: 'bold' },
+                        color: '#333'
+                    },
+                    min: 0, max: 100
+                },
+                y: {
+                    title: { 
+                        display: true, 
+                        text: variableLabels[yVar],
+                        font: { size: 16, weight: 'bold' },
+                        color: '#333'
+                    },
+                    ticks: { 
+                        font: { size: 14, weight: 'bold' },
+                        color: '#333'
+                    },
+                    min: 0, max: 100
+                }
+            },
+            plugins: {
+                tooltip: {
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 12, weight: 'normal' },
+                    callbacks: {
+                        label: function(context) {
+                            const r = context.raw.restaurant;
+                            return r.name;
+                        },
+                        afterLabel: function(context) {
+                            const r = context.raw.restaurant;
+                            return r.latent_summary ? r.latent_summary.substring(0, 50) + '...' : '';
+                        }
+                    }
+                }
+            },
+            onHover: (event, activeElements) => {
+                if (activeElements.length > 0) {
+                    const dataIndex = activeElements[0].index;
+                    const restaurant = emdRestaurants[dataIndex];
+                    showStrategyHoverInfo(restaurant, xVar, yVar);
+                }
+            }
+        }
+    });
+}
+
+function showStrategyHoverInfo(restaurant, xVar, yVar) {
+    const info = document.getElementById('strategyHoverInfo');
+    
+    const xComponents = restaurant.universal_scores[xVar]?.components || [];
+    const yComponents = restaurant.universal_scores[yVar]?.components || [];
+    
+    info.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem;">
+            <div>
+                <h4>${restaurant.name}</h4>
+                <p style="color: #666;">${restaurant.address}</p>
+                <p style="margin-top: 1rem;">${restaurant.latent_summary}</p>
+            </div>
+            <div>
+                <h5>${variableLabels[xVar]} 분포</h5>
+                <canvas id="xDensity" width="250" height="120"></canvas>
+                <div style="margin-top: 1rem; font-size: 0.9rem;">
+                    ${xComponents.map(c => `
+                        <div style="display: flex; justify-content: space-between; margin: 0.5rem 0;">
+                            <span>${c.component_name}</span>
+                            <span>${c.point_score.toFixed(1)} (${(c.weight * 100).toFixed(0)}%)</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <div>
+                <h5>${variableLabels[yVar]} 분포</h5>
+                <canvas id="yDensity" width="250" height="120"></canvas>
+                <div style="margin-top: 1rem; font-size: 0.9rem;">
+                    ${yComponents.map(c => `
+                        <div style="display: flex; justify-content: space-between; margin: 0.5rem 0;">
+                            <span>${c.component_name}</span>
+                            <span>${c.point_score.toFixed(1)} (${(c.weight * 100).toFixed(0)}%)</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    setTimeout(() => {
+        drawKernelDensity('xDensity', xComponents);
+        drawKernelDensity('yDensity', yComponents);
+    }, 100);
+}
+
+// ==================== UTILITY FUNCTIONS ====================
+function createControlPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'control-panel';
+    return panel;
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+    Object.values(charts).forEach(chart => {
+        if (chart && chart.destroy) chart.destroy();
+    });
+    charts = {};
+}
+
+function toggleVisibility(elementId) {
+    const el = document.getElementById(elementId);
+    if (el) {
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+function showTooltip(id, event) {
+    // Legacy function - now handled by showKernelDensity
+}
+
+function hideTooltip(id) {
+    // Legacy function - now handled by hideKernelDensity
+}
+
+// ==================== KERNEL DENSITY ESTIMATION ====================
+function drawKernelDensity(canvasId, components) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !components || components.length === 0) return;
+    
+    const samples = [];
+    components.forEach(c => {
+        const count = Math.round(c.weight * 30);
+        for (let i = 0; i < count; i++) {
+            samples.push(c.point_score + (Math.random() - 0.5) * 5);
+        }
+    });
+
+    if (samples.length < 2) return;
+    
+    const ctx = canvas.getContext('2d');
+    const bandwidth = Math.max(1, Math.sqrt(variance(samples)) * Math.pow(samples.length, -0.2));
+    
+    const kdeData = [];
+    for (let x = 0; x <= 100; x += 3) {
+        kdeData.push({x: x, y: kernelDensityEstimator(kernelEpanechnikov(bandwidth), samples)(x)});
+    }
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: { 
+            datasets: [{ 
+                data: kdeData, 
+                borderColor: 'rgba(118, 75, 162, 0.8)', 
+                fill: true, 
+                backgroundColor: 'rgba(118, 75, 162, 0.2)', 
+                borderWidth: 2, 
+                pointRadius: 0,
+                tension: 0.4
+            }] 
+        },
+        options: {
+            responsive: true, 
+            maintainAspectRatio: false,
+            scales: { 
+                x: { display: false }, 
+                y: { display: false } 
+            },
+            plugins: { 
+                legend: { display: false }, 
+                tooltip: { enabled: false } 
+            }
+        }
+    });
+}
+
+function kernelDensityEstimator(kernel, X) {
+    return function(V) {
+        return X.map(x => kernel(V - x)).reduce((s, a) => s + a, 0) / X.length;
+    };
+}
+
+function kernelEpanechnikov(k) {
+    return function(v) {
+        return Math.abs(v /= k) <= 1 ? 0.75 * (1 - v * v) / k : 0;
+    };
+}
+
+function variance(arr) {
+    const mean = arr.reduce((a,b)=>a+b,0) / arr.length;
+    return arr.reduce((acc, val) => acc + (val - mean) ** 2, 0) / arr.length;
+}
+
+// ==================== PDF DOWNLOAD ====================
+async function downloadPDF() {
+    loadingOverlay.style.display = 'flex';
+    loadingOverlay.querySelector('p').textContent = 'PDF 생성 중...';
+    
+    try {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        const pagesToCapture = ['map-page', 'heatmap-page', 'comparison-page', 'franchise-page', 'typemap-page', 'strategymap-page'];
+        
+        for(let i = 0; i < pagesToCapture.length; i++) {
+            loadingOverlay.querySelector('p').textContent = `PDF 생성 중... (${i+1}/${pagesToCapture.length})`;
+            
+            navigateTo(pagesToCapture[i]);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const canvas = await html2canvas(document.getElementById(pagesToCapture[i]), { 
+                scale: 1.5,
+                logging: false,
+                useCORS: true
+            });
+            const imgData = canvas.toDataURL('image/png');
+            
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            
+            if (i > 0) pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        }
+        
+        pdf.save('상권분석_리포트.pdf');
+        
+    } catch(e) {
+        console.error("PDF generation failed:", e);
+        alert("PDF 생성에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+        loadingOverlay.style.display = 'none';
+        loadingOverlay.querySelector('p').textContent = '데이터를 불러오는 중입니다...';
+        navigateTo('map-page');
+    }
+}
+
+// ==================== APPLICATION STARTUP ====================
+document.addEventListener('DOMContentLoaded', loadAllData);
+
+</script>
+</body>
+</html>
